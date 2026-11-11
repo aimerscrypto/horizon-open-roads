@@ -17,7 +17,7 @@ export class Environment {
   readonly sunDir = new THREE.Vector3(0, 1, 0);
   readonly lightDir = new THREE.Vector3(0, 1, 0);
   /** hours 0..24 */ time = 16.6;
-  /** in-game hours per real second */ timeScale = 24 / (14 * 60);
+  /** in-game hours per real second */ timeScale = 24 / (24 * 60);
   weatherMode: WeatherMode = 'dynamic';
   rain = 0; wet = 0; daylight = 1; exposure = 0.6;
   shadowRange = 110;

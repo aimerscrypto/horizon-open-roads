@@ -74,7 +74,7 @@ export class RoadMeshes {
         .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nnormal = normalize(mix(normal, nonPerturbedNormal, gPuddle * 0.85));');
     };
     const dirt = new THREE.MeshStandardMaterial({ map: A.tex.gravel_road, normalMap: A.tex.gravel_road_n, roughness: 0.95, color: 0xc9b9a2 });
-    const shoulder = new THREE.MeshStandardMaterial({ map: A.tex.gravel_road, normalMap: A.tex.gravel_road_n, roughness: 0.97, color: 0x8d8478 });
+    const shoulder = new THREE.MeshStandardMaterial({ map: A.tex.gravel_road, normalMap: A.tex.gravel_road_n, roughness: 0.97, color: 0xcfc4b4 });
     const concrete = new THREE.MeshStandardMaterial({ map: A.tex.concrete_wall_008, normalMap: A.tex.concrete_wall_008_n, roughness: 0.82, color: 0xb9b6b0 });
     const timber = new THREE.MeshStandardMaterial({ map: A.tex.pine_bark, normalMap: A.tex.pine_bark_n, roughness: 0.9, color: 0x9a7a5c });
     const rail = new THREE.MeshStandardMaterial({ color: 0xaeb4ba, metalness: 0.85, roughness: 0.38, side: THREE.DoubleSide });

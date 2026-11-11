@@ -136,7 +136,7 @@ export class CarPhysics {
     this.steerNorm += clamp(dS, -rate * dt, rate * dt);
     const beta = spd > 6 ? Math.atan2(vR, Math.abs(vF) + 0.01) : 0;
     this.driftAngle = spd > 8 && vF > 0 ? beta : 0;
-    const assist = Math.sign(beta) * clamp((Math.abs(beta) - 0.07) * 0.6, 0, 0.35) * clamp((spd - 6) / 10, 0, 1) * (vF > 0 ? 1 : 0);
+    const assist = Math.sign(beta) * clamp((Math.abs(beta) - 0.07) * 0.95, 0, 0.5) * clamp((spd - 6) / 10, 0, 1) * (vF > 0 ? 1 : 0);
     this.steerAngle = clamp(this.steerNorm * Math.max(lock, Math.abs(assist) * 0.6) + assist, -s.steerLock, s.steerLock);
 
     // ---- suspension pass
@@ -215,9 +215,13 @@ export class CarPhysics {
       const maxF = mu * N;
       let Fx = 0, Fy = 0, slide = 0;
       const locked = inp.handbrake && !w.front;
+      const peak = w.front ? 0.135 : 0.118;
+      const alpha = Math.atan2(vLat, Math.max(Math.abs(vLong), 2.5));
+      const xa = Math.abs(alpha) / peak;
       if (locked) {
-        const k = 0.78 * maxF / Math.max(vAbs, 0.6);
-        Fx = -vLong * k; Fy = -vLat * k; slide = vAbs;
+        // locked rears: sliding friction along the travel direction, with reduced side bite so the tail steps out progressively
+        const inv = maxF / Math.max(vAbs, 0.6);
+        Fx = -vLong * inv * 0.42; Fy = -vLat * inv * 0.62; slide = vAbs;
       } else {
         const share = s.drive === 'rwd' ? (w.front ? 0 : 0.5) : (w.front ? (1 - s.rearBias) / 2 : s.rearBias / 2);
         const sgn = Math.abs(vLong) < 0.5 ? vLong / 0.5 : Math.sign(vLong);
@@ -225,15 +229,12 @@ export class CarPhysics {
         let req = (drive + engBrake) * share - sgn * (brakeF * (w.front ? 0.31 : 0.19) + crr * N);
         if (this.throttle < 0.02 && this.brake < 0.02 && Math.abs(vLong) < 0.6) req = -vLong * (N / G) * 6; // hold still
         const over = Math.abs(req) / Math.max(maxF, 1);
-        // light traction control: keeps lateral grip under power until the car is already sliding
-        const tc = req > 0 && vLong > 0 ? 0.74 + 0.26 * clamp((Math.abs(beta) - 0.1) / 0.2, 0, 1) : 1;
+        // light traction control: full drive in a straight line, held back while cornering until the car is already sliding
+        const tc = req > 0 && vLong > 0 ? Math.max(0.96 - 0.24 * Math.min(1, xa), 0.74 + 0.16 * clamp((Math.abs(beta) - 0.1) / 0.2, 0, 1)) : 1;
         Fx = clamp(req, -maxF, maxF * tc) * (over > 1 ? 0.96 : 1);
         if (share > 0 && over > 1 && this.throttle > 0.2) { spinAcc += Math.min(over - 1, 1.5) * share; slide += Math.min(over - 1, 1.5) * 6 + 2; }
         const used = Fx / Math.max(maxF, 1);
-        const latCap = maxF * Math.sqrt(Math.max(0.1, 1 - used * used * 0.9));
-        const peak = w.front ? 0.135 : 0.118;
-        const alpha = Math.atan2(vLat, Math.max(Math.abs(vLong), 2.5));
-        const xa = Math.abs(alpha) / peak;
+        const latCap = maxF * Math.sqrt(Math.max(0.1, 1 - used * used * 0.72));
         const curve = xa < 1 ? xa * (2 - xa) : 1 - 0.2 * Math.min(1, (xa - 1) / 4);
         Fy = -Math.sign(alpha) * curve * latCap;
         if (vAbs < 2) { const servo = clamp(-vLat * (N / G) * 9, -latCap, latCap); const t = vAbs / 2; Fy = servo * (1 - t) + Fy * t; }
@@ -265,6 +266,8 @@ export class CarPhysics {
     this.vel.addScaledVector(F, dt / m);
     this.ang.add(this.invInertia(T).multiplyScalar(dt));
     this.ang.multiplyScalar(1 - 0.35 * dt);
+    // drift stability: damp yaw once the slide gets deep, so slides are catchable on a keyboard
+    if (grounded >= 2) { const deep = clamp((Math.abs(beta) - 0.3) / 0.45, 0, 1); if (deep > 0 && this.ang.y * beta > 0) this.ang.y *= 1 - 3.2 * deep * dt; else if (deep > 0) this.ang.y *= 1 - 1.2 * deep * dt; }
     const wl = this.ang.length();
     if (wl > 9) this.ang.multiplyScalar(9 / wl);
     this.pos.addScaledVector(this.vel, dt);

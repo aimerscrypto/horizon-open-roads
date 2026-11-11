@@ -17,7 +17,7 @@ const MODELS = {
   quiver_tree_01: 1600, wild_rooibos_bush: 420, shrub_02: 420, fern_02: 260,
   namaqualand_boulder_02: 420, namaqualand_boulder_05: 420, namaqualand_cliff_01: 760, namaqualand_cliff_02: 760,
   rock_face_01: 700, rock_face_02: 700, rock_07: 340, rock_moss_set_01: 700,
-  concrete_road_barrier: 300, street_lamp_01: 900, tree_stump_01: 320,
+  concrete_road_barrier: 300, tree_stump_01: 320,
   wooden_picnic_table: 800, dead_tree_trunk: 520,
 };
 fs.mkdirSync(`${OUT}/models`, { recursive: true }); fs.mkdirSync(`${OUT}/tex`, { recursive: true }); fs.mkdirSync(`${OUT}/cars`, { recursive: true }); fs.mkdirSync(`${OUT}/hdri`, { recursive: true });
@@ -48,14 +48,14 @@ if (!only || only === 'car') {
     const t = m.getBaseColorTexture();
     if (t && /khronos/i.test(t.getName() + t.getURI())) { m.setBaseColorTexture(null); m.setBaseColorFactor([0.02, 0.02, 0.02, 1]); }
   }
-  await doc.transform(dedup(), prune(), weld(), simplify({ simplifier: MeshoptSimplifier, ratio: 0.36, error: 0.004 }),
+  await doc.transform(dedup(), prune(), weld(), simplify({ simplifier: MeshoptSimplifier, ratio: 0.5, error: 0.0012 }),
     textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [1024, 1024], quality: 85 }), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
   await io.write(`${OUT}/cars/concept.glb`, doc);
   console.log('car', before, '->', tris(doc), (fs.statSync(`${OUT}/cars/concept.glb`).size / 1024).toFixed(0), 'KB');
 }
 if (!only || only === 'tex') {
   for (const id of fs.readdirSync(`${SRC}/textures`)) for (const f of fs.readdirSync(`${SRC}/textures/${id}`)) {
-    const name = f.replace('.jpg', '');
+    const name = f.replace('.jpg', ''); if (name === 'arm' || id === 'rock_face') continue;
     await sharp(`${SRC}/textures/${id}/${f}`).resize(1024, 1024).webp({ quality: name === 'nor' ? 88 : 80 }).toFile(`${OUT}/tex/${id}_${name}.webp`);
   }
   for (const f of fs.readdirSync(`${SRC}/hdri`)) fs.copyFileSync(`${SRC}/hdri/${f}`, `${OUT}/hdri/sky_1k.hdr`);

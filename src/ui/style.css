@@ -168,4 +168,4 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 #flash.on { opacity: 1; }
 #warn { position: absolute; left: 50%; top: 44%; transform: translateX(-50%); font-size: 15px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--accent-2); text-shadow: 0 1px 10px #000; display: none; }
 #warn.on { display: block; }
-@media (max-width: 900px) { .cluster { transform: scale(0.75); transform-origin: bottom right; } #minimap { width: 150px; height: 150px; } .place { bottom: calc(3vh + 162px); } .controls { display: none; } #hint { display: none; } .evgrid, .setgrid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .carcard .tag { position: static; display: block; margin-top: 4px; } .carlist h2, .carinfo h2 { font-size: 24px; } .cluster .speed { font-size: 70px; } .cluster { transform: scale(0.75); transform-origin: bottom right; } #minimap { width: 150px; height: 150px; } .place { bottom: calc(3vh + 162px); } .controls { display: none; } #hint { display: none; } .evgrid, .setgrid { grid-template-columns: 1fr; } }

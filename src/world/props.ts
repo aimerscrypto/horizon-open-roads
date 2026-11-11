@@ -59,10 +59,10 @@ function coniferGeometry(tiers: number, seg: number, seed: number): THREE.Buffer
     const hgt = 0.2 * (1 - t * 0.45), rot = rnd() * 6.28, uo = rnd();
     const base = pos.length / 3;
     for (let i = 0; i <= seg; i++) {
-      const a = rot + i / seg * Math.PI * 2, cx = Math.cos(a), cz = Math.sin(a), wob = 0.86 + rnd() * 0.28;
+      const a = rot + i / seg * Math.PI * 2, cx = Math.cos(a), cz = Math.sin(a), wob = (i % 2 === 0 ? 1.0 : 0.6) * (0.86 + rnd() * 0.28);
       const u = (uo + i / seg * 1.5) * 0.75 % 0.75; // stay within the foliage strip
       push(cx * r * 0.1, y0 + hgt, cz * r * 0.1, cx * 0.5, 0.86, cz * 0.5, (uo + i / seg * 1.5) % 1 * 0.74, 0.02, 0.5);
-      push(cx * r * wob, y0 - hgt * 0.25 * wob, cz * r * wob, cx * 0.85, 0.5, cz * 0.85, (uo + i / seg * 1.5) % 1 * 0.74, 0.98, 1.0);
+      push(cx * r * wob, y0 - hgt * 0.3 * wob, cz * r * wob, cx * 0.85, 0.5, cz * 0.85, (uo + i / seg * 1.5) % 1 * 0.74, 0.98, 1.0);
       void u;
     }
     for (let i = 0; i < seg; i++) { const a = base + i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
@@ -88,7 +88,7 @@ export class Props {
   constructor(private hf: HeightField, A: Assets, readonly colliders: Colliders, renderer: THREE.WebGLRenderer, density: number) {
     this.density = density;
     const atlas = makeTreeAtlas(A.tex.pine_bark);
-    this.treeGeo = coniferGeometry(8, 7, 5);
+    this.treeGeo = coniferGeometry(9, 10, 5);
     this.treeMat = new THREE.MeshLambertMaterial({ map: atlas, alphaTest: 0.45, side: THREE.DoubleSide, vertexColors: true });
     // bake an impostor of the conifer
     const rt = new THREE.WebGLRenderTarget(128, 256, { colorSpace: THREE.SRGBColorSpace });
@@ -135,7 +135,7 @@ export class Props {
     reg('rock_face_01', 760, true, 0.15); reg('rock_face_02', 760, true, 0.15); reg('rock_07', 380, true, 0.2);
     reg('rock_moss_set_01', 320, true, 0.12); reg('quiver_tree_01', 420, true, 0.02); reg('wild_rooibos_bush', 230, false, 0.05);
     reg('shrub_02', 210, false, 0.05); reg('fern_02', 110, false, 0.03); reg('tree_stump_01', 180, true, 0.05); reg('dead_tree_trunk', 320, true, 0.1);
-    reg('street_lamp_01', 500, true, 0); reg('wooden_picnic_table', 300, true, 0); reg('concrete_road_barrier', 400, true, 0);
+    reg('wooden_picnic_table', 300, true, 0); reg('concrete_road_barrier', 400, true, 0);
     const sizeOf = (id: string): THREE.Vector3 => (A.models[id] as any)?.__size ?? new THREE.Vector3(1, 1, 1);
 
     for (let cz = 0; cz < CN; cz++) for (let cx = 0; cx < CN; cx++) {

@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 5189 --strictPort",
     "assets:fetch": "node scripts/fetch-assets.mjs",
-    "assets:prep": "node scripts/prep-assets.mjs"
+    "assets:prep": "node scripts/prep-assets.mjs",
+    "deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {
     "three": "^0.170.0"

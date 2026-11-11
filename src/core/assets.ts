@@ -35,7 +35,7 @@ export class Assets {
       T.push([id, id + '_diff', true], [id + '_n', id + '_nor', false]);
     }
     const M = ['quiver_tree_01', 'wild_rooibos_bush', 'shrub_02', 'fern_02', 'namaqualand_boulder_02', 'namaqualand_boulder_05', 'namaqualand_cliff_01',
-      'namaqualand_cliff_02', 'rock_face_01', 'rock_face_02', 'rock_07', 'rock_moss_set_01', 'concrete_road_barrier', 'street_lamp_01', 'tree_stump_01',
+      'namaqualand_cliff_02', 'rock_face_01', 'rock_face_02', 'rock_07', 'rock_moss_set_01', 'concrete_road_barrier', 'tree_stump_01',
       'wooden_picnic_table', 'dead_tree_trunk'];
     await Promise.all([
       ...T.map(t => this.loadTex(t[0], t[1], t[2])),

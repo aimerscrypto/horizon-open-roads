@@ -78,11 +78,11 @@ export interface ActivityDef {
 }
 
 export const ACTIVITIES: ActivityDef[] = [
-  { id: 'race-desert', kind: 'race', name: 'Redrock Sprint', biome: 'Desert', road: 'loop', s0: 90, s1: 2950, stars: [84, 70, 60], reward: 6000, blurb: 'Flat-out point-to-point across the desert floor and over Red Canyon.' },
-  { id: 'race-mountain', kind: 'race', name: 'Summit Hillclimb', biome: 'Mountain', road: 'loop', s0: 3420, s1: 7440, stars: [170, 140, 120], reward: 9000, blurb: 'Switchbacks, the summit tunnel and a long drop toward the pines.' },
-  { id: 'race-forest', kind: 'race', name: 'Pinewood Run', biome: 'Forest', road: 'loop', s0: 8560, s1: 11850, stars: [130, 108, 92], reward: 7000, blurb: 'A flowing ribbon of tarmac under the trees, with two river crossings.' },
-  { id: 'trial-loop', kind: 'trial', name: 'Horizon Grand Tour', biome: 'Desert', road: 'loop', s0: 40, s1: -1, stars: [470, 395, 340], reward: 20000, blurb: 'One full 12.7 km lap of the Horizon Loop against the clock.' },
-  { id: 'trial-cut', kind: 'trial', name: 'Dust Devil Dash', biome: 'Desert', road: 'cut', s0: 70, s1: 3360, stars: [150, 122, 104], reward: 8000, blurb: 'Dirt, crests and a timber bridge. Bring the SUV.' },
+  { id: 'race-desert', kind: 'race', name: 'Redrock Sprint', biome: 'Desert', road: 'loop', s0: 90, s1: 2950, stars: [76, 65, 56], reward: 6000, blurb: 'Flat-out point-to-point across the desert floor and over Red Canyon.' },
+  { id: 'race-mountain', kind: 'race', name: 'Summit Hillclimb', biome: 'Mountain', road: 'loop', s0: 3420, s1: 7440, stars: [140, 118, 102], reward: 9000, blurb: 'Switchbacks, the summit tunnel and a long drop toward the pines.' },
+  { id: 'race-forest', kind: 'race', name: 'Pinewood Run', biome: 'Forest', road: 'loop', s0: 8560, s1: 11850, stars: [104, 88, 76], reward: 7000, blurb: 'A flowing ribbon of tarmac under the trees, with two river crossings.' },
+  { id: 'trial-loop', kind: 'trial', name: 'Horizon Grand Tour', biome: 'Desert', road: 'loop', s0: 40, s1: -1, stars: [335, 288, 252], reward: 20000, blurb: 'One full 12.7 km lap of the Horizon Loop against the clock.' },
+  { id: 'trial-cut', kind: 'trial', name: 'Dust Devil Dash', biome: 'Desert', road: 'cut', s0: 70, s1: 3360, stars: [112, 94, 82], reward: 8000, blurb: 'Dirt, crests and a timber bridge. Bring the SUV.' },
   { id: 'trap-desert', kind: 'trap', name: 'Mesa Straight', biome: 'Desert', road: 'loop', s0: 930, s1: 0, stars: [190, 240, 285], reward: 2500, blurb: 'Speed trap' },
   { id: 'trap-mountain', kind: 'trap', name: 'Summit Tunnel', biome: 'Mountain', road: 'loop', s0: 6420, s1: 0, stars: [150, 195, 235], reward: 2500, blurb: 'Speed trap' },
   { id: 'trap-forest', kind: 'trap', name: 'Lakeside Blast', biome: 'Forest', road: 'loop', s0: 11000, s1: 0, stars: [160, 200, 240], reward: 2500, blurb: 'Speed trap' },

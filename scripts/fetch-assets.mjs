@@ -5,9 +5,9 @@ import path from 'node:path';
 const OUT = path.resolve('assets-src');
 const MODELS = ['quiver_tree_01',
   'wild_rooibos_bush', 'shrub_02', 'fern_02', 'namaqualand_boulder_02', 'namaqualand_boulder_05', 'namaqualand_cliff_01',
-  'namaqualand_cliff_02', 'rock_face_01', 'rock_face_02', 'boulder_01', 'rock_07', 'rock_moss_set_01', 'concrete_road_barrier',
-  'street_lamp_01', 'modular_electricity_poles', 'tree_stump_01', 'wooden_picnic_table', 'dead_tree_trunk'];
-const TEXTURES = ['asphalt_04', 'red_sand', 'forest_ground_04', 'cliff_side', 'gravel_road', 'rock_face', 'aerial_grass_rock', 'concrete_wall_008', 'pine_bark', 'aerial_sand'];
+  'namaqualand_cliff_02', 'rock_face_01', 'rock_face_02', 'rock_07', 'rock_moss_set_01', 'concrete_road_barrier',
+  'tree_stump_01', 'wooden_picnic_table', 'dead_tree_trunk'];
+const TEXTURES = ['asphalt_04', 'red_sand', 'forest_ground_04', 'cliff_side', 'gravel_road', 'aerial_grass_rock', 'concrete_wall_008', 'pine_bark', 'aerial_sand'];
 const HDRIS = ['kloofendal_48d_partly_cloudy_puresky'];
 
 async function dl(url, file) {

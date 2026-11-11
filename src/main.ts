@@ -47,7 +47,7 @@ class Game {
   private tunnel = 0; private offRouteT = 0; private lastEvent: ActivityDef | null = null; private previewId = '';
   private tunnelLight = new THREE.PointLight(0xffb070, 0, 46, 1.6); private blob!: THREE.Mesh;
   private biome: [number, number, number] = [1, 0, 0]; private saveT = 0; private lastLevel = 1; private miniT = 0;
-  fps = 60; frames = 0;
+  fps = 60; frames = 0; skipRender = false;
 
   async boot() {
     const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -119,7 +119,6 @@ class Game {
   /** Hand-placed set dressing: start-line lamps, picnic spots at the viewpoints, barriers. */
   private dressWorld() {
     const loop = this.net.byId('loop'), hw = loop.def.halfWidth;
-    for (const s of [10, 60, 110, 160, 6160, 6190, 6520, 6550]) for (const sx of [-1, 1]) { const p = loop.pointAt(s, sx * (hw + 2.6)); this.props.addProp('street_lamp_01', p.x, p.z, 7.5, loop.headingAt(s) + (sx > 0 ? Math.PI / 2 : -Math.PI / 2), 0.25); }
     for (const s of [5700, 7250, 2380, 10700]) { const p = loop.pointAt(s, hw + 9); this.props.addProp('wooden_picnic_table', p.x, p.z, 0.9, loop.headingAt(s) + 0.4, 1.1); const q = loop.pointAt(s + 7, hw + 10); this.props.addProp('wooden_picnic_table', q.x, q.z, 0.9, loop.headingAt(s) - 0.5, 1.1); }
     for (const s of [5690, 5696, 5702, 5708, 5714, 7240, 7246, 7252, 7258]) { const p = loop.pointAt(s, hw + 15); this.props.addProp('concrete_road_barrier', p.x, p.z, 0.85, loop.headingAt(s), 0.9); }
   }
@@ -203,7 +202,7 @@ class Game {
     this.audio.vol.master = s.master; this.audio.vol.engine = s.engine; this.audio.vol.ambience = s.ambience; this.audio.applyVolumes();
     if (this.state !== 'drive') this.audio.suspend(true);
     this.env.weatherMode = s.weather; this.rig.shakeEnabled = s.camShake;
-    if (s.timeFlow === 'cycle') this.env.timeScale = 24 / (14 * 60); else { this.env.timeScale = 0; this.env.time = s.timeFlow === 'day' ? 12.5 : s.timeFlow === 'sunset' ? 17.45 : 23.2; }
+    if (s.timeFlow === 'cycle') this.env.timeScale = 24 / (24 * 60); else { this.env.timeScale = 0; this.env.time = s.timeFlow === 'day' ? 12.5 : s.timeFlow === 'sunset' ? 17.45 : 23.2; }
     this.dyn = 1; this.resize();
   }
   private resize() {
@@ -285,7 +284,7 @@ class Game {
     if (driving) {
       const b = this.biome, bn = b[1] > 0.5 ? 'Mountain' : b[2] > 0.5 ? 'Forest' : 'Desert';
       ui.updateHud(dt, { kmh: car.kmh, rpm: car.rpm, redline: car.spec.redline, gear: car.gear, nitro: car.nitro, boosting: car.boosting, clock: this.env.clock,
-        weather: this.env.rain > 0.4 ? 'Rain' : this.env.daylight < 0.3 ? 'Night' : 'Clear', biome: bn, road: car.road && Math.abs(car.roadLat) < car.road.def.halfWidth + 6 ? car.road.def.name : 'Off-road' });
+        weather: this.env.rain > 0.4 ? 'Rain' : this.env.daylight < 0.12 ? 'Night' : this.env.daylight < 0.75 ? (this.env.time < 12 ? 'Dawn' : 'Dusk') : 'Clear', biome: bn, road: car.road && Math.abs(car.roadLat) < car.road.def.halfWidth + 6 ? car.road.def.name : 'Off-road' });
       const a = this.acts.active;
       if (a) {
         ui.setActivity({ name: a.name, time: this.acts.time, sub: `Checkpoint ${Math.min(this.acts.cpIndex + 1, this.acts.cps.length)} / ${this.acts.cps.length} · ${(this.acts.remaining / 1000).toFixed(1)} km to go`, progress: this.acts.progress });
@@ -299,7 +298,7 @@ class Game {
       this.saveT += dt; if (this.saveT > 20) { this.saveT = 0; this.save.write(); }
     } else { ui.player.x = car.pos.x; ui.player.z = car.pos.z; ui.player.yaw = car.yaw; }
 
-    if (this.composer) this.composer.render(dt); else this.renderer.render(this.scene, cam);
+    if (this.skipRender) { /* QA fast-forward */ } else if (this.composer) this.composer.render(dt); else this.renderer.render(this.scene, cam);
     inp.endFrame();
 
     // adaptive resolution
@@ -323,9 +322,10 @@ const game = new Game();
   },
   tp(roadId: string, s: number, lat = 0) { const r = game.net.byId(roadId), p = r.pointAt(s, lat); game.car.place(p.x, p.z, r.headingAt(s), p.y + 2); (game as any).rig.snap(); },
   /** follow the current road automatically for `sec` seconds */
-  auto(sec: number, maxKmh = 400, skill = 0.75) {
-    const g = game as any; let t = g.last; const car = game.car;
+  auto(sec: number, maxKmh = 400, skill = 0.75, fast = false) {
+    const g = game as any; let t = g.last; const car = game.car; game.skipRender = fast;
     for (let i = 0, n = Math.round(sec * 60); i < n; i++) {
+      if (game.state !== 'drive') break;
       const road = car.road; if (!road) break;
       const spd = Math.max(0, car.speed), la = 9 + spd * 0.55, tp = road.pointAt(car.roadS + la);
       let want = Math.atan2(-(tp.x - car.pos.x), -(tp.z - car.pos.z)) - car.yaw; while (want > Math.PI) want -= 2 * Math.PI; while (want < -Math.PI) want += 2 * Math.PI;
@@ -335,7 +335,7 @@ const game = new Game();
       g.debugInput = { steer: clamp(-Math.atan(2 * sp.wheelbase * Math.sin(want) / la) * 1.5 / lock, -1, 1), accel: clamp((vmax - spd) / 4, 0, 1), decel: spd > vmax + 1.5 ? Math.min(1, (spd - vmax) / 6) : 0 };
       t += 1000 / 60; g.frame(t);
     }
-    g.debugInput = null;
+    g.debugInput = null; game.skipRender = false; g.frame(t + 16);
     return { kmh: Math.round(car.kmh), road: car.road?.def.id, s: Math.round(car.roadS), lat: +car.roadLat.toFixed(1), state: game.state, act: game.acts.active?.id, cp: game.acts.cpIndex, time: +game.acts.time.toFixed(1) };
   },
   probe() {
