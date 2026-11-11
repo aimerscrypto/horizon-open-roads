@@ -78,15 +78,15 @@ export interface ActivityDef {
 }
 
 export const ACTIVITIES: ActivityDef[] = [
-  { id: 'race-desert', kind: 'race', name: 'Redrock Sprint', biome: 'Desert', road: 'loop', s0: 80, s1: 3100, stars: [100, 84, 72], reward: 6000, blurb: 'Flat-out point-to-point across the desert floor.' },
-  { id: 'race-mountain', kind: 'race', name: 'Summit Hillclimb', biome: 'Mountain', road: 'loop', s0: 3350, s1: 6900, stars: [150, 128, 112], reward: 9000, blurb: 'Switchbacks, a summit tunnel and a long drop into the pines.' },
-  { id: 'race-forest', kind: 'race', name: 'Pinewood Run', biome: 'Forest', road: 'loop', s0: 8700, s1: 11500, stars: [118, 100, 88], reward: 7000, blurb: 'A flowing ribbon of tarmac under the trees.' },
-  { id: 'trial-loop', kind: 'trial', name: 'Horizon Grand Tour', biome: 'Desert', road: 'loop', s0: 40, s1: -1, stars: [420, 360, 315], reward: 20000, blurb: 'One full lap of the Horizon Loop against the clock.' },
-  { id: 'trial-cut', kind: 'trial', name: 'Dust Devil Dash', biome: 'Desert', road: 'cut', s0: 60, s1: 3200, stars: [135, 112, 98], reward: 8000, blurb: 'Dirt, crests and a timber bridge. Bring the SUV.' },
-  { id: 'trap-desert', kind: 'trap', name: 'Mesa Straight', biome: 'Desert', road: 'loop', s0: 1000, s1: 0, stars: [200, 250, 290], reward: 3000, blurb: 'Speed trap' },
-  { id: 'trap-mountain', kind: 'trap', name: 'Summit Tunnel', biome: 'Mountain', road: 'loop', s0: 6230, s1: 0, stars: [140, 180, 215], reward: 3000, blurb: 'Speed trap' },
-  { id: 'trap-forest', kind: 'trap', name: 'Lakeside', biome: 'Forest', road: 'loop', s0: 10550, s1: 0, stars: [170, 215, 250], reward: 3000, blurb: 'Speed trap' },
-  { id: 'drift-mountain', kind: 'drift', name: 'Switchback Slide', biome: 'Mountain', road: 'loop', s0: 4250, s1: 5350, stars: [6000, 14000, 26000], reward: 5000, blurb: 'Drift zone' },
-  { id: 'drift-forest', kind: 'drift', name: 'Timberline Esses', biome: 'Forest', road: 'loop', s0: 9050, s1: 10150, stars: [5000, 12000, 22000], reward: 5000, blurb: 'Drift zone' },
-  { id: 'drift-desert', kind: 'drift', name: 'Canyon Sweep', biome: 'Desert', road: 'loop', s0: 1750, s1: 2800, stars: [5000, 12000, 22000], reward: 5000, blurb: 'Drift zone' },
+  { id: 'race-desert', kind: 'race', name: 'Redrock Sprint', biome: 'Desert', road: 'loop', s0: 90, s1: 2950, stars: [84, 70, 60], reward: 6000, blurb: 'Flat-out point-to-point across the desert floor and over Red Canyon.' },
+  { id: 'race-mountain', kind: 'race', name: 'Summit Hillclimb', biome: 'Mountain', road: 'loop', s0: 3420, s1: 7440, stars: [170, 140, 120], reward: 9000, blurb: 'Switchbacks, the summit tunnel and a long drop toward the pines.' },
+  { id: 'race-forest', kind: 'race', name: 'Pinewood Run', biome: 'Forest', road: 'loop', s0: 8560, s1: 11850, stars: [130, 108, 92], reward: 7000, blurb: 'A flowing ribbon of tarmac under the trees, with two river crossings.' },
+  { id: 'trial-loop', kind: 'trial', name: 'Horizon Grand Tour', biome: 'Desert', road: 'loop', s0: 40, s1: -1, stars: [470, 395, 340], reward: 20000, blurb: 'One full 12.7 km lap of the Horizon Loop against the clock.' },
+  { id: 'trial-cut', kind: 'trial', name: 'Dust Devil Dash', biome: 'Desert', road: 'cut', s0: 70, s1: 3360, stars: [150, 122, 104], reward: 8000, blurb: 'Dirt, crests and a timber bridge. Bring the SUV.' },
+  { id: 'trap-desert', kind: 'trap', name: 'Mesa Straight', biome: 'Desert', road: 'loop', s0: 930, s1: 0, stars: [190, 240, 285], reward: 2500, blurb: 'Speed trap' },
+  { id: 'trap-mountain', kind: 'trap', name: 'Summit Tunnel', biome: 'Mountain', road: 'loop', s0: 6420, s1: 0, stars: [150, 195, 235], reward: 2500, blurb: 'Speed trap' },
+  { id: 'trap-forest', kind: 'trap', name: 'Lakeside Blast', biome: 'Forest', road: 'loop', s0: 11000, s1: 0, stars: [160, 200, 240], reward: 2500, blurb: 'Speed trap' },
+  { id: 'drift-mountain', kind: 'drift', name: 'Switchback Slide', biome: 'Mountain', road: 'loop', s0: 4060, s1: 5080, stars: [4000, 10000, 20000], reward: 2500, blurb: 'Drift zone' },
+  { id: 'drift-forest', kind: 'drift', name: 'Timberline Esses', biome: 'Forest', road: 'loop', s0: 9250, s1: 10200, stars: [4000, 10000, 20000], reward: 2500, blurb: 'Drift zone' },
+  { id: 'drift-desert', kind: 'drift', name: 'Canyon Sweep', biome: 'Desert', road: 'loop', s0: 1700, s1: 2560, stars: [3500, 9000, 18000], reward: 2500, blurb: 'Drift zone' },
 ];

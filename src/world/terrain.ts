@@ -14,6 +14,8 @@ export class HeightField {
   /** distance to nearest road centreline (m), capped */
   readonly roadDist = new Float32Array(G1 * G1);
   readonly cutY = new Float32Array(G1 * G1);
+  /** 1 where a river / canyon bed was carved */
+  readonly water = new Uint8Array(G1 * G1);
   readonly rivers: RiverPath[] = [];
   private tmpB: [number, number, number] = [0, 0, 0];
 
@@ -107,6 +109,14 @@ export class HeightField {
       if (tunnel[k]) { wr = 0; if (d < 9) cutY[k] = roadY[k] + 7.6; }
       h[k] = lerp(nat, roadY[k] - 0.28, wr);
     }
+    // widen the tunnel cut-out by two cells so the wall at each portal is removed cleanly
+    for (let pass = 0; pass < 2; pass++) {
+      const src = cutY.slice();
+      for (let gz = 1; gz < GRID; gz++) for (let gx = 1; gx < GRID; gx++) {
+        const k = gz * G1 + gx; if (src[k] > 0) continue;
+        const m = Math.max(src[k - 1], src[k + 1], src[k - G1], src[k + G1]); if (m > 0) cutY[k] = m;
+      }
+    }
     // --- rivers & canyons
     const rd = new Float32Array(G1 * G1).fill(1e9), ry = new Float32Array(G1 * G1);
     for (const rv of this.rivers) {
@@ -121,7 +131,7 @@ export class HeightField {
       }
       for (let k = 0; k < rd.length; k++) if (rd[k] < top) {
         const w = 1 - smoothstep(rv.def.bottom, top, rd[k]);
-        if (ry[k] < h[k]) h[k] = lerp(h[k], ry[k], w);
+        if (ry[k] < h[k]) { h[k] = lerp(h[k], ry[k], w); if (w > 0.2) this.water[k] = 1; }
         rd[k] = 1e9;
       }
     }
@@ -158,6 +168,10 @@ export class HeightField {
     const ix = Math.min(GRID, Math.max(0, Math.round((x + HALF) / CELL))), iz = Math.min(GRID, Math.max(0, Math.round((z + HALF) / CELL)));
     return this.roadDist[iz * G1 + ix];
   }
+  inWater(x: number, z: number): boolean {
+    const ix = Math.min(GRID, Math.max(0, Math.round((x + HALF) / CELL))), iz = Math.min(GRID, Math.max(0, Math.round((z + HALF) / CELL)));
+    return this.water[iz * G1 + ix] === 1;
+  }
   normal(x: number, z: number, out: THREE.Vector3): THREE.Vector3 {
     const e = 2;
     const dx = this.sample(x + e, z) - this.sample(x - e, z), dz = this.sample(x, z + e) - this.sample(x, z - e);
@@ -176,15 +190,16 @@ const LOD_STEPS = [1, 2, 5, 10];
 
 export class Terrain {
   readonly group = new THREE.Group();
-  readonly material: THREE.MeshStandardMaterial;
-  readonly uniforms = { uWet: { value: 0 }, uSnowLine: { value: 520 } };
+  readonly material: THREE.MeshLambertMaterial;
+  readonly uniforms = { uWet: { value: 0 }, uSnowLine: { value: 520 }, uDetail: { value: 1 } };
   private chunks: { cx: number; cz: number; center: THREE.Vector3; lods: (THREE.Mesh | null)[]; cur: number }[] = [];
-  lodScale = 1;
+  lodScale = 1; castShadows = false;
+  setCastShadows(on: boolean) { this.castShadows = on; this.group.traverse(o => { if ((o as THREE.Mesh).isMesh) o.castShadow = on && o.userData.lod === 0; }); }
 
   constructor(readonly hf: HeightField, tex: TerrainTextures) {
     const cut = new THREE.DataTexture(hf.cutY, G1, G1, THREE.RedFormat, THREE.FloatType);
     cut.magFilter = cut.minFilter = THREE.NearestFilter; cut.needsUpdate = true;
-    const mat = new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0 });
+    const mat = new THREE.MeshLambertMaterial();
     const U = this.uniforms;
     mat.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, U, {
@@ -197,49 +212,48 @@ export class Terrain {
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', `#include <common>
           uniform sampler2D tSand, tSandN, tForest, tForestN, tRock, tRockN, tGrass, tCut;
-          uniform float uWet, uSnowLine;
+          uniform float uWet, uSnowLine, uDetail;
           varying vec3 vWPos; varying vec3 vWNrm; varying vec4 vBiome;
-          vec3 gNrm; float gRough;`)
+          vec3 gNrm;`)
         .replace('#include <map_fragment>', `
-          vec2 cuv = (vWPos.xz + ${HALF.toFixed(1)}) / ${WORLD_SIZE.toFixed(1)};
-          if (vWPos.y < texture2D(tCut, cuv).r) discard;
           float cdist = length(vWPos - cameraPosition);
-          float farMix = smoothstep(30., 240., cdist) * 0.86;
+          float farMix = smoothstep(25., 200., cdist);
           vec3 wn = normalize(vWNrm);
-          vec2 uvN = vWPos.xz / 6.5, uvF = vWPos.xz / 53.;
-          vec3 macroS = texture2D(tSand, vWPos.xz / 870.).rgb;
-          float macro = 0.72 + 0.56 * dot(macroS, vec3(0.6, 0.9, 1.2)) ;
-          vec3 sand = mix(texture2D(tSand, uvN).rgb, texture2D(tSand, uvF).rgb, farMix);
-          vec3 forest = mix(texture2D(tForest, uvN * 1.3).rgb, texture2D(tForest, uvF * 1.1).rgb, farMix);
-          vec3 grass = mix(texture2D(tGrass, uvN * 0.6).rgb, texture2D(tGrass, uvF * 0.7).rgb, farMix);
-          vec3 an = abs(wn); float wx = an.x / max(an.x + an.z, 1e-4);
-          vec3 rockA = mix(texture2D(tRock, vWPos.xy / 11.).rgb, texture2D(tRock, vWPos.xy / 67.).rgb, farMix);
-          vec3 rockB = mix(texture2D(tRock, vWPos.zy / 11.).rgb, texture2D(tRock, vWPos.zy / 67.).rgb, farMix);
-          vec3 rock = mix(rockA, rockB, wx);
           float slope = 1.0 - wn.y;
           float bD = vBiome.x, bM = vBiome.y, bF = vBiome.z;
-          // desert
-          float strata = 0.82 + 0.26 * sin(vWPos.y * 0.42 + macroS.r * 9.0) * sin(vWPos.y * 0.13 + 1.7);
-          vec3 sandstone = rock * vec3(1.75, 0.98, 0.62) * strata;
-          vec3 cD = mix(sand * vec3(1.06, 0.93, 0.8), sandstone, smoothstep(0.16, 0.36, slope));
-          // mountain
-          float snow = smoothstep(uSnowLine - 40.0, uSnowLine + 50.0, vWPos.y + macroS.g * 120.0) * smoothstep(0.62, 0.3, slope);
-          vec3 cM = mix(grass * vec3(0.92, 0.95, 0.78), rock * vec3(0.95, 0.94, 0.96), smoothstep(0.17, 0.4, slope));
-          cM = mix(cM, vec3(0.86, 0.89, 0.94), snow);
-          // forest
-          vec3 cF = mix(mix(forest, grass * vec3(0.6, 0.78, 0.5), 0.35 * macroS.b + 0.1), rock * vec3(0.72, 0.74, 0.7), smoothstep(0.3, 0.55, slope));
-          vec3 terr = (cD * bD + cM * bM + cF * bF) * macro;
-          vec3 shoulder = mix(vec3(0.33, 0.3, 0.27), terr, 0.45);
-          terr = mix(terr, shoulder, vBiome.w * 0.75);
+          vec3 macroS = texture2D(tSand, vWPos.xz / 870.).rgb;
+          float macro = 0.7 + 0.6 * dot(macroS, vec3(0.6, 0.9, 1.2));
+          // one planar rock sample: pick the projection by the dominant horizontal normal axis
+          vec2 ruv = wn.y > 0.5 ? vWPos.xz : (abs(wn.x) > abs(wn.z) ? vWPos.zy : vWPos.xy);
+          vec3 rock = texture2D(tRock, ruv / mix(9.0, 31.0, farMix)).rgb;
+          vec3 grey = vec3(dot(rock, vec3(0.4, 0.4, 0.3)));
+          vec3 terr = vec3(0.0);
+          float snow = 0.0;
+          if (bD > 0.02) {
+            vec3 sand = texture2D(tSand, vWPos.xz / mix(6.5, 41.0, farMix)).rgb;
+            float strata = 0.86 + 0.2 * sin(vWPos.y * 0.21 + macroS.r * 9.0) * sin(vWPos.y * 0.067 + 1.7);
+            terr += bD * mix(sand * vec3(1.9, 1.5, 1.22) + vec3(0.05, 0.035, 0.02), rock * vec3(2.0, 1.12, 0.72) * strata, smoothstep(0.16, 0.36, slope));
+          }
+          if (bM > 0.02) {
+            vec3 grass = texture2D(tGrass, vWPos.xz / mix(11.0, 67.0, farMix)).rgb;
+            snow = smoothstep(uSnowLine - 40.0, uSnowLine + 50.0, vWPos.y + macroS.g * 120.0) * smoothstep(0.62, 0.3, slope);
+            vec3 cM = mix(grass * vec3(0.72, 0.98, 0.5), grey * vec3(1.0, 1.02, 1.08), smoothstep(0.2, 0.42, slope));
+            terr += bM * mix(cM, vec3(0.86, 0.89, 0.94), snow);
+          }
+          if (bF > 0.02) {
+            vec3 forest = texture2D(tForest, vWPos.xz / mix(5.0, 37.0, farMix)).rgb;
+            terr += bF * mix(forest * mix(vec3(0.95, 1.0, 0.8), vec3(0.55, 0.95, 0.42), clamp(0.9 * macroS.b + 0.25, 0.0, 1.0)), grey * vec3(0.74, 0.76, 0.72), smoothstep(0.3, 0.55, slope));
+          }
+          terr *= macro;
+          terr = mix(terr, mix(vec3(0.33, 0.3, 0.27), terr, 0.45), vBiome.w * 0.75);
           terr *= mix(1.0, 0.62, uWet);
           diffuseColor.rgb = terr;
-          gRough = mix(0.96, 0.6, uWet) - snow * 0.3 * bM;
-          vec3 nS = texture2D(tSandN, uvN).xyz * 2.0 - 1.0, nF = texture2D(tForestN, uvN * 1.3).xyz * 2.0 - 1.0, nR = texture2D(tRockN, mix(vWPos.xy, vWPos.zy, step(0.5, wx)) / 11.).xyz * 2.0 - 1.0;
-          float rk = smoothstep(0.17, 0.4, slope);
-          vec3 nm = mix(nS * bD + nF * (bF + bM), nR, rk);
-          gNrm = normalize(wn + vec3(nm.x, 0.0, nm.y) * 0.75 * (1.0 - farMix));
+          gNrm = wn;
+          if (uDetail > 0.5 && cdist < 90.0) {
+            vec3 nm = texture2D(tRockN, vWPos.xz / 7.0).xyz * 2.0 - 1.0;
+            gNrm = normalize(wn + vec3(nm.x, 0.0, nm.y) * 0.6 * (1.0 - cdist / 90.0));
+          }
         `)
-        .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = gRough;')
         .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize((viewMatrix * vec4(gNrm, 0.0)).xyz);');
     };
     this.material = mat;
@@ -270,7 +284,10 @@ export class Terrain {
       v++;
     }
     const idx: number[] = [];
+    // the hillside is left open where the tunnel bores in (low overburden near each portal)
+    const open = (i: number, j: number) => { const k = (gz0 + j * step) * G1 + gx0 + i * step, c = hf.cutY[k]; return c > 0 && hf.h[k] - (c - 7.6) < 13; };
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      if (open(i, j) || open(i + 1, j) || open(i, j + 1) || open(i + 1, j + 1)) continue;
       const a = j * n1 + i, c = a + n1;
       idx.push(a, c, a + 1, a + 1, c, c + 1);
     }
@@ -298,7 +315,7 @@ export class Terrain {
     geo.setIndex(vcount > 65535 ? new THREE.BufferAttribute(new Uint32Array(idx), 1) : new THREE.BufferAttribute(new Uint16Array(idx), 1));
     geo.computeBoundingSphere(); geo.computeBoundingBox();
     const mesh = new THREE.Mesh(geo, this.material);
-    mesh.receiveShadow = true; mesh.castShadow = lod === 0; mesh.matrixAutoUpdate = false;
+    mesh.receiveShadow = true; mesh.castShadow = lod === 0 && this.castShadows; mesh.userData.lod = lod; mesh.matrixAutoUpdate = false;
     return mesh;
   }
 

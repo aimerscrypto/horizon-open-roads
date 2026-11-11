@@ -65,8 +65,8 @@ export const CARS: CarSpec[] = [
   },
   {
     id: 'hyper', name: 'Vanta R', klass: 'Exotic Supercar', tagline: 'All-wheel drive, active aero, zero compromise.', price: 90000,
-    model: 'glb', body: { kind: 'supercar', length: 4.6, width: 2.0, height: 1.16, ride: 0.11, paint: 0xf2b705 },
-    mass: 1490, wheelbase: 2.72, track: 1.68, cgHeight: 0.4, wheelRadius: 0.35, wheelWidth: 0.31,
+    model: 'glb', body: { kind: 'supercar', length: 4.35, width: 2.02, height: 1.12, ride: 0.11, paint: 0xf2b705 },
+    mass: 1490, wheelbase: 2.52, track: 1.76, cgHeight: 0.4, wheelRadius: 0.346, wheelWidth: 0.3,
     drive: 'awd', rearBias: 0.68,
     maxTorque: 860, peakRpm: 6200, redline: 8800, idle: 1000, gears: [3.1, 2.1, 1.56, 1.22, 0.99, 0.82, 0.68], final: 3.45, shiftTime: 0.11,
     grip: 1.42, rearGrip: 1.06, offroad: 0.55, brakeG: 1.4,
