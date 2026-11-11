@@ -324,6 +324,7 @@ const game = new Game();
   /** follow the current road automatically for `sec` seconds */
   auto(sec: number, maxKmh = 400, skill = 0.75, fast = false) {
     const g = game as any; let t = g.last; const car = game.car; game.skipRender = fast;
+    if (!car.road) { t += 1000 / 60; g.frame(t); }
     for (let i = 0, n = Math.round(sec * 60); i < n; i++) {
       if (game.state !== 'drive') break;
       const road = car.road; if (!road) break;

@@ -56,7 +56,7 @@ export const RIVERS: RiverDef[] = [
 /** Tunnel: road samples of `road` inside this circle are roofed over by the summit ridge. */
 export const TUNNEL = { road: 'loop', x: 100, z: -1535, r: 150, ridge: 78 };
 
-export const START = { road: 'loop', s: 30 };
+export const START = { road: 'loop', s: -80 };
 
 /** Biome weights (desert, mountain, forest), each 0..1 summing to 1. */
 export function biomeAt(x: number, z: number, out: [number, number, number]): [number, number, number] {
