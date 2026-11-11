@@ -19,7 +19,7 @@ export class CarVisual {
   readonly hoodCam = new THREE.Vector3(); readonly cockpitCam = new THREE.Vector3();
   paint: THREE.Material[] = [];
 
-  constructor(readonly spec: CarSpec, hero: GLTF) {
+  constructor(readonly spec: CarSpec, hero: GLTF, models: Record<string, GLTF> = {}) {
     const s = spec, lf = s.wheelbase * 0.52, lr = s.wheelbase * 0.48, ht = s.track / 2;
     const wheelPos = [[-ht, -lf], [ht, -lf], [-ht, lr], [ht, lr]];
     const y0 = -s.cgHeight + s.wheelRadius;
@@ -61,6 +61,8 @@ export class CarVisual {
       });
       this.hoodCam.set(0, 0.52, -0.55); this.cockpitCam.set(-0.33, 0.56, 0.18);
       this.headLight.position.set(0, 0.2, -lf - 0.6);
+    } else if (models['car_' + s.id]) {
+      this.buildScan(models['car_' + s.id]);
     } else {
       const body = buildBody(s);
       body.group.position.y = -s.cgHeight; this.group.add(body.group);
@@ -80,6 +82,84 @@ export class CarVisual {
     this.group.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) { m.castShadow = true; } });
     this.headLight.target.position.set(0, this.headLight.position.y - 0.7, this.headLight.position.z - 30);
     this.group.add(this.headLight, this.headLight.target);
+  }
+
+  /**
+   * Rig a downloaded concept car. The prep step tags wheel parts with a WHEEL_ material prefix and merges
+   * meshes per material, so the four wheels are separated here by splitting triangles into quadrants.
+   */
+  private buildScan(gltf: GLTF) {
+    const s = this.spec, cfg = s.scan!;
+    const src = gltf.scene.clone(true); src.scale.setScalar(cfg.scale);
+    const holder = new THREE.Group(); holder.add(src); holder.updateMatrixWorld(true);
+    const v = new THREE.Vector3(), box = new THREE.Box3(), head = new THREE.Vector3(); let headN = 0;
+    const wheelMeshes: THREE.Mesh[] = [];
+    src.traverse(o => {
+      const m = o as THREE.Mesh; if (!m.isMesh) return;
+      const name = (m.material as THREE.Material).name;
+      if (name.startsWith('WHEEL_')) { wheelMeshes.push(m); const p = m.geometry.getAttribute('position'); for (let i = 0; i < p.count; i += 7) box.expandByPoint(v.fromBufferAttribute(p, i).applyMatrix4(m.matrixWorld)); }
+      else if (/headlight/i.test(name)) { const p = m.geometry.getAttribute('position'); for (let i = 0; i < p.count; i += 11) { head.add(v.fromBufferAttribute(p, i).applyMatrix4(m.matrixWorld)); headN++; } }
+    });
+    const mid = box.getCenter(new THREE.Vector3());
+    // nose towards -Z: use the headlights to tell front from back
+    const frontIsPlusZ = cfg.flip ?? (headN > 0 ? head.z / headN > mid.z : false);
+    if (frontIsPlusZ) { holder.rotation.y = Math.PI; holder.updateMatrixWorld(true); box.makeEmpty(); for (const m of wheelMeshes) { const p = m.geometry.getAttribute('position'); for (let i = 0; i < p.count; i += 7) box.expandByPoint(v.fromBufferAttribute(p, i).applyMatrix4(m.matrixWorld)); } box.getCenter(mid); }
+    // split every wheel mesh into four quadrant meshes (FL, FR, RL, RR) in car space
+    const quad: { pos: number[]; nrm: number[]; uv: number[]; mat: THREE.Material }[][] = [[], [], [], []];
+    const qBox = [new THREE.Box3(), new THREE.Box3(), new THREE.Box3(), new THREE.Box3()];
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3(), nm = new THREE.Matrix3();
+    for (const m of wheelMeshes) {
+      const g = m.geometry, P = g.getAttribute('position'), N = g.getAttribute('normal'), U = g.getAttribute('uv'), I = g.index;
+      nm.getNormalMatrix(m.matrixWorld);
+      const parts = [0, 1, 2, 3].map(() => ({ pos: [] as number[], nrm: [] as number[], uv: [] as number[], mat: m.material as THREE.Material }));
+      const count = I ? I.count : P.count;
+      for (let t = 0; t < count; t += 3) {
+        const i0 = I ? I.getX(t) : t, i1 = I ? I.getX(t + 1) : t + 1, i2 = I ? I.getX(t + 2) : t + 2;
+        a.fromBufferAttribute(P, i0).applyMatrix4(m.matrixWorld); b.fromBufferAttribute(P, i1).applyMatrix4(m.matrixWorld); c.fromBufferAttribute(P, i2).applyMatrix4(m.matrixWorld);
+        const q = ((a.z + b.z + c.z) / 3 < mid.z ? 0 : 2) + ((a.x + b.x + c.x) / 3 < mid.x ? 0 : 1), part = parts[q];
+        for (const [pt, idx] of [[a, i0], [b, i1], [c, i2]] as const) {
+          part.pos.push(pt.x, pt.y, pt.z); qBox[q].expandByPoint(pt);
+          if (N) { n.fromBufferAttribute(N, idx).applyMatrix3(nm).normalize(); part.nrm.push(n.x, n.y, n.z); }
+          if (U) part.uv.push(U.getX(idx), U.getY(idx));
+        }
+      }
+      parts.forEach((p, q) => { if (p.pos.length) quad[q].push(p); });
+      m.removeFromParent();
+    }
+    const cen = qBox.map(bx => bx.getCenter(new THREE.Vector3()));
+    const radius = qBox.reduce((r, bx) => r + (bx.max.y - bx.min.y) / 2, 0) / 4;
+    // adopt the model's real proportions for the physics
+    s.wheelbase = Math.abs((cen[2].z + cen[3].z) / 2 - (cen[0].z + cen[1].z) / 2); s.track = Math.abs((cen[1].x + cen[3].x) / 2 - (cen[0].x + cen[2].x) / 2);
+    s.wheelRadius = radius; s.wheelWidth = (qBox[0].max.x - qBox[0].min.x);
+    const lf = s.wheelbase * 0.52, lr = s.wheelbase * 0.48, y0 = -s.cgHeight + s.wheelRadius;
+    const off = new THREE.Vector3(-(cen[0].x + cen[1].x) / 2, y0 - (cen[0].y + cen[2].y) / 2, (-lf + lr) / 2 - (cen[0].z + cen[1].z + cen[2].z + cen[3].z) / 4);
+    holder.position.copy(off); this.group.add(holder);
+    const full = new THREE.Box3().setFromObject(holder);
+    s.body.length = full.max.z - full.min.z; s.body.width = Math.max(full.max.x - full.min.x, s.track + s.wheelWidth); s.body.height = full.max.y - (y0 - radius);
+    for (let q = 0; q < 4; q++) {
+      const piv = new THREE.Group(); piv.position.copy(cen[q]).add(off);
+      for (const p of quad[q]) {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(p.pos, 3)); if (p.nrm.length) g.setAttribute('normal', new THREE.Float32BufferAttribute(p.nrm, 3)); else g.computeVertexNormals();
+        if (p.uv.length) g.setAttribute('uv', new THREE.Float32BufferAttribute(p.uv, 2));
+        g.translate(-cen[q].x, -cen[q].y, -cen[q].z);
+        piv.add(new THREE.Mesh(g, p.mat));
+      }
+      this.group.add(piv); this.wheels.push(piv); this.restY.push(piv.position.y);
+    }
+    src.traverse(o => {
+      const m = o as THREE.Mesh; if (!m.isMesh) return;
+      const pm = m.material as THREE.MeshPhysicalMaterial, name = pm.name;
+      m.castShadow = true; m.receiveShadow = true;
+      if (/^glass$/i.test(name) || cfg.glass.includes(name)) { m.material = new THREE.MeshPhysicalMaterial({ color: 0x0a0e12, metalness: 0.85, roughness: 0.03, transparent: true, opacity: 0.6, envMapIntensity: 1.5, name: 'Glass' }); m.castShadow = false; return; }
+      if (cfg.paint.includes(name)) { pm.color.set(s.body.paint); pm.map = null; pm.metalness = 0.6; pm.roughness = 0.3; if ('clearcoat' in pm) { pm.clearcoat = 1; pm.clearcoatRoughness = 0.04; } pm.envMapIntensity = 1.3; this.paint.push(pm); }
+      if (/stop|tail/i.test(name)) { pm.emissive.set(0xff1a12); this.brakeMats.push(pm); }
+      if (/^headlights?$/i.test(name)) { pm.emissive.set(0xdfe8ff); this.headMats.push(pm); }
+    });
+    const top = full.max.y + off.y * 0;
+    this.hoodCam.set(0, y0 + radius + (full.max.y - full.min.y) * 0.42, -lf * 0.35);
+    this.cockpitCam.set(-s.track * 0.22, y0 + radius + (full.max.y - full.min.y) * 0.34, lr * 0.02);
+    this.headLight.position.set(0, y0 + radius * 0.9, full.min.z + off.z - 0.3); void top;
   }
 
   setPaint(color: number) { for (const p of this.paint) (p as THREE.MeshPhysicalMaterial).color.set(color); }

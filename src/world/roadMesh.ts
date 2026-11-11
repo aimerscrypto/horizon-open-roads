@@ -118,6 +118,25 @@ export class RoadMeshes {
         }
       }
       if (piers.length) add(mergeGeometries(piers), isAsphalt ? concrete : timber, true);
+      // reflective delineator posts every 24 m: they whip past at speed
+      if (isAsphalt) {
+        const mk: THREE.Matrix4[] = [];
+        for (let i = 0; i < road.n; i += 12) {
+          if (road.flags[i] & (F_BRIDGE | F_TUNNEL)) continue;
+          for (const sg of [-1, 1]) {
+            if (road.flags[i] & (sg > 0 ? F_GUARD_R : F_GUARD_L)) continue;
+            const m = new THREE.Matrix4().makeRotationY(Math.atan2(-road.tx[i], -road.tz[i]));
+            m.setPosition(road.px[i] + road.rx[i] * (hw + 1.5) * sg, road.py[i] + 0.4, road.pz[i] + road.rz[i] * (hw + 1.5) * sg); mk.push(m);
+          }
+        }
+        const postMat = new THREE.MeshLambertMaterial({ color: 0xf1f1ec, emissive: 0x2a2a28 });
+        const pg = mergeGeometries([new THREE.BoxGeometry(0.11, 1.05, 0.05), new THREE.BoxGeometry(0.115, 0.16, 0.055).translate(0, 0.33, 0)])!;
+        const cols = new Float32Array(pg.getAttribute('position').count * 3);
+        for (let k = 0; k < cols.length / 3; k++) { const band = k >= 24; cols[k * 3] = band ? 1.0 : 1; cols[k * 3 + 1] = band ? 0.25 : 1; cols[k * 3 + 2] = band ? 0.05 : 1; }
+        pg.setAttribute('color', new THREE.BufferAttribute(cols, 3)); postMat.vertexColors = true;
+        const pim = new THREE.InstancedMesh(pg, postMat, mk.length);
+        mk.forEach((m, k) => pim.setMatrixAt(k, m)); pim.frustumCulled = false; this.group.add(pim);
+      }
       // guardrails
       const posts: THREE.Matrix4[] = [];
       for (const [flag, sgn] of [[F_GUARD_R, 1], [F_GUARD_L, -1]] as const) {

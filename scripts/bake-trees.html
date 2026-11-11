@@ -1,0 +1,62 @@
+<!doctype html>
+<!-- Dev-only tool: renders photoscanned Poly Haven trees into a billboard atlas. Open through the Vite dev server:
+     /scripts/bake-trees.html?id=fir_tree_01  (needs `node scripts/shot-server.mjs` running to save the PNG). -->
+<html><body style="margin:0;background:#333;color:#fff;font:14px monospace"><pre id="log">loading…</pre>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+const id = new URLSearchParams(location.search).get('id') || 'fir_tree_01';
+const log = (m) => { document.getElementById('log').textContent += '\n' + m; };
+let COLS = 6, ROWS = 2, TW = 341, TH = 1024;
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true, premultipliedAlpha: false });
+renderer.setSize(COLS * TW, ROWS * TH, false); renderer.setPixelRatio(1); renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x1a2414, 0); renderer.domElement.style.width = '900px'; document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x6a7a66, 4.6));
+const sun = new THREE.DirectionalLight(0xfff4e0, 3.2); sun.position.set(0.5, 1, 0.7); scene.add(sun);
+try {
+  const gltf = await new GLTFLoader().loadAsync(`/assets-src/models/${id}/${id}.gltf`);
+  const variants = [];
+  gltf.scene.updateMatrixWorld(true);
+  gltf.scene.traverse(o => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    o.material = mats.map(m => new THREE.MeshLambertMaterial({ map: m.map, alphaTest: m.transparent || m.alphaTest > 0 ? 0.45 : 0, side: THREE.DoubleSide }));
+    if (o.material.length === 1) o.material = o.material[0];
+  });
+  // each top-level object that contains meshes is one tree variant
+  const tops = gltf.scene.children.length === 1 && !gltf.scene.children[0].isMesh ? gltf.scene.children[0].children : gltf.scene.children;
+  for (const t of tops) { let has = false; t.traverse(o => { if (o.isMesh) has = true; }); if (has) variants.push(t); }
+  log(`variants: ${variants.length}`);
+  let maxR = 0, maxH = 0; const info = [];
+  for (const v of variants) {
+    const box = new THREE.Box3().setFromObject(v), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+    const holder = new THREE.Group(); const inner = new THREE.Group(); inner.position.set(-c.x, -box.min.y, -c.z); holder.add(inner); inner.attach ? null : null;
+    v.removeFromParent(); inner.add(v); scene.add(holder); holder.visible = false;
+    const r = Math.max(s.x, s.z) / 2; maxR = Math.max(maxR, r); maxH = Math.max(maxH, s.y); info.push({ holder, r, h: s.y });
+  }
+  const rOverride = Number(new URLSearchParams(location.search).get('r')); if (rOverride > 0) maxR = rOverride;
+  // pick the atlas grid whose tile shape fits the tree best
+  const aspect = maxR * 2.04 / (maxH * 1.02);
+  [COLS, ROWS] = aspect <= 0.34 ? [6, 2] : aspect <= 0.76 ? [4, 3] : [3, 4]; TW = Math.floor(2048 / COLS); TH = Math.floor(2048 / ROWS);
+  renderer.setSize(COLS * TW, ROWS * TH, false);
+  // keep the tile aspect: widen the frame if needed
+  const halfW = rOverride > 0 ? maxH * 1.02 * TW / TH / 2 : Math.max(maxR * 1.02, maxH * 1.02 * TW / TH / 2), H = halfW * 2 * TH / TW;
+  const cam = new THREE.OrthographicCamera(-halfW, halfW, H, 0, 0.1, 400); cam.position.set(0, 0, 150); cam.lookAt(0, 0, 0); cam.position.y = 0; cam.rotation.set(0, 0, 0);
+  renderer.setScissorTest(true); renderer.clear();
+  let tile = 0;
+  for (let vi = 0; vi < Math.min(3, info.length); vi++) for (let k = 0; k < 4; k++) {
+    for (const i of info) i.holder.visible = false;
+    const h = info[vi].holder; h.visible = true; h.rotation.y = k * Math.PI / 4 + vi;
+    const col = tile % COLS, row = Math.floor(tile / COLS);
+    renderer.setViewport(col * TW, (ROWS - 1 - row) * TH, TW, TH); renderer.setScissor(col * TW, (ROWS - 1 - row) * TH, TW, TH);
+    renderer.render(scene, cam); tile++;
+  }
+  const meta = { id, tiles: tile, cols: COLS, rows: ROWS, halfWidth: +halfW.toFixed(3), height: +H.toFixed(3), treeHeight: +maxH.toFixed(2), variants: Math.min(3, info.length) };
+  const blob = await new Promise(r => renderer.domElement.toBlob(r, 'image/png'));
+  const res = await fetch(`http://127.0.0.1:5191/?dir=bake&name=${id}&ext=png`, { method: 'POST', body: blob });
+  log('saved: ' + await res.text() + ' ' + blob.size + ' bytes');
+  log('META ' + JSON.stringify(meta));
+  document.title = 'BAKED ' + JSON.stringify(meta);
+} catch (e) { log('ERROR ' + (e && e.message)); document.title = 'ERROR ' + (e && e.message); }
+</script></body></html>

@@ -1,5 +1,5 @@
-// Fully synthesised audio (Web Audio API): engine, tyres, wind, impacts, UI and biome ambience.
-// Nothing is sampled, so there are no third-party audio licences to track.
+// Audio: recorded CC0 loops (engine, tyres, gravel, wind, rain, birds, crickets, crashes) mixed with the Web Audio API.
+// A synthesised fallback covers the engine until the recordings have loaded, and UI tones are generated.
 import { clamp } from '../core/noise';
 import { CarPhysics } from '../vehicle/physics';
 import { CarSpec } from '../vehicle/specs';
@@ -15,6 +15,29 @@ export class GameAudio {
   private rainGain!: GainNode; private ambWindGain!: GainNode; private cricketGain!: GainNode;
   private spec: CarSpec | null = null; private birdT = 2; private popT = 0; private lastThrottle = 0;
   vol = { master: 0.8, engine: 0.8, ambience: 0.6 };
+  private buf: Record<string, AudioBuffer> = {}; private sampled = false;
+  private eng: { src: AudioBufferSourceNode; gain: GainNode; hz: number }[] = []; private engBus!: GainNode; private engLP!: BiquadFilterNode;
+  private loops: Record<string, { src: AudioBufferSourceNode; gain: GainNode }> = {};
+  private wasBoost = false;
+
+  private async loadSamples() {
+    const ctx = this.ctx!, base = import.meta.env.BASE_URL + 'assets/audio/';
+    const names = ['engine_0.wav', 'engine_1.wav', 'engine_3.wav', 'engine_5.wav', 'skid.wav', 'gravel.wav', 'wind.wav', 'rain.mp3', 'birds.mp3', 'crickets.mp3', 'crash_big.mp3', 'crash_metal.mp3', 'crash_light.mp3', 'turbo.mp3'];
+    await Promise.all(names.map(async n => { try { const r = await fetch(base + n); this.buf[n.split('.')[0]] = await ctx.decodeAudioData(await r.arrayBuffer()); } catch { /* keep the synth fallback */ } }));
+    const mk = (name: string, dest: AudioNode) => { const src = ctx.createBufferSource(); src.buffer = this.buf[name]; src.loop = true; const gain = ctx.createGain(); gain.gain.value = 0; src.connect(gain); gain.connect(dest); src.start(0, Math.random() * (src.buffer?.duration ?? 0)); return { src, gain }; };
+    if (this.buf.engine_0 && this.buf.engine_1 && this.buf.engine_3 && this.buf.engine_5) {
+      this.engLP = ctx.createBiquadFilter(); this.engLP.type = 'lowpass'; this.engLP.frequency.value = 4000; this.engLP.Q.value = 0.6;
+      this.engBus = ctx.createGain(); this.engBus.gain.value = 0; this.engLP.connect(this.engBus); this.engBus.connect(this.sfx);
+      // measured fundamentals of the four recordings (Hz)
+      for (const [n, hz] of [['engine_0', 21.6], ['engine_1', 60], ['engine_3', 69.8], ['engine_5', 76.6]] as const) { const l = mk(n, this.engLP); this.eng.push({ ...l, hz }); }
+      this.sampled = true;
+    }
+    for (const [n, dest] of [['skid', this.sfx], ['gravel', this.sfx], ['wind', this.sfx], ['rain', this.amb], ['birds', this.amb], ['crickets', this.amb]] as const) if (this.buf[n]) this.loops[n] = mk(n, dest);
+  }
+  private play(name: string, vol: number, rate = 1) {
+    const ctx = this.ctx!, b = this.buf[name]; if (!b) return false;
+    const s = ctx.createBufferSource(); s.buffer = b; s.playbackRate.value = rate; const g = ctx.createGain(); g.gain.value = vol; s.connect(g); g.connect(this.sfx); s.start(); return true;
+  }
 
   /** Must be called from a user gesture. */
   start() {
@@ -52,6 +75,7 @@ export class GameAudio {
     const lfo = ctx.createOscillator(); lfo.frequency.value = 17; const lg = ctx.createGain(); lg.gain.value = 0; lfo.connect(lg); lg.connect(this.cricketGain.gain); lfo.start();
     (this as any).cricketLfo = lg;
     this.applyVolumes();
+    void this.loadSamples();
   }
   applyVolumes() { if (!this.ctx) return; this.master.gain.value = this.vol.master; this.sfx.gain.value = this.vol.engine; this.amb.gain.value = this.vol.ambience; this.ui.gain.value = 0.7; }
   setCar(spec: CarSpec) { this.spec = spec; }
@@ -76,31 +100,49 @@ export class GameAudio {
   checkpoint() { if (this.ctx) { this.tone(1175, 0.12, 'sine', 0.18, this.ui); this.tone(1760, 0.2, 'sine', 0.16, this.ui, 0, 0.08); } }
   fanfare(stars: number) { if (!this.ctx) return; const n = [523, 659, 784, 1047, 1319]; for (let i = 0; i < 2 + stars; i++) this.tone(n[i], 0.38, 'triangle', 0.17, this.ui, 0, i * 0.11); }
   reward() { if (this.ctx) { this.tone(880, 0.1, 'sine', 0.14, this.ui); this.tone(1320, 0.25, 'sine', 0.14, this.ui, 0, 0.09); } }
-  impact(strength: number) { if (!this.ctx) return; const v = clamp(strength / 9, 0.08, 1); this.burst(0.3 + v * 0.3, v * 0.9, 500 + v * 900); this.tone(70, 0.3, 'sine', v * 0.8, this.sfx, 38); if (v > 0.4) this.burst(0.5, v * 0.3, 3000, 'highpass'); }
+  impact(strength: number) { if (!this.ctx) return; const v = clamp(strength / 9, 0.08, 1);
+    if (this.play(v > 0.55 ? 'crash_big' : v > 0.25 ? 'crash_metal' : 'crash_light', 0.35 + v * 0.9, 0.9 + Math.random() * 0.25)) { this.tone(60, 0.25, 'sine', v * 0.5, this.sfx, 36); return; } this.burst(0.3 + v * 0.3, v * 0.9, 500 + v * 900); this.tone(70, 0.3, 'sine', v * 0.8, this.sfx, 38); if (v > 0.4) this.burst(0.5, v * 0.3, 3000, 'highpass'); }
   shift(up: boolean) { if (!this.ctx) return; this.burst(0.05, 0.22, 1900, 'bandpass', 2); if (!up) this.burst(0.12, 0.18, 300); }
   land(v: number) { if (this.ctx) { this.burst(0.25, 0.5 * v, 260); this.tone(55, 0.25, 'sine', 0.6 * v, this.sfx, 35); } }
 
   update(dt: number, car: CarPhysics | null, env: { rain: number; daylight: number; biome: [number, number, number]; tunnel: number }) {
     const ctx = this.ctx; if (!ctx) return;
     const t = ctx.currentTime, set = (p: AudioParam, v: number, tc = 0.04) => p.setTargetAtTime(v, t, tc);
-    set(this.rainGain.gain, env.rain * 0.22 * (1 - env.tunnel), 0.5);
+    const L = this.loops;
+    if (L.rain) { set(L.rain.gain.gain, env.rain * 0.9 * (1 - env.tunnel * 0.8), 0.5); set(this.rainGain.gain, 0, 0.5); } else set(this.rainGain.gain, env.rain * 0.22 * (1 - env.tunnel), 0.5);
     set(this.ambWindGain.gain, (0.05 + env.biome[0] * 0.09 + env.biome[1] * 0.13) * (1 - env.tunnel * 0.7) + Math.sin(t * 0.23) * 0.02, 0.6);
     const night = 1 - env.daylight;
-    set(this.cricketGain.gain, 0.0, 0.3); ((this as any).cricketLfo as GainNode).gain.setTargetAtTime(night * 0.5 * (1 - env.rain) * (env.biome[2] * 0.8 + env.biome[0] * 0.5), t, 0.5);
+    const quiet = car ? clamp(1.15 - car.kmh / 150, 0.2, 1) : 1;
+    set(this.cricketGain.gain, 0.0, 0.3); ((this as any).cricketLfo as GainNode).gain.setTargetAtTime(L.crickets ? 0 : night * 0.5 * (1 - env.rain) * (env.biome[2] * 0.8 + env.biome[0] * 0.5), t, 0.5);
+    if (L.crickets) set(L.crickets.gain.gain, night * 0.7 * (1 - env.rain) * (1 - env.tunnel) * quiet, 0.8);
+    if (L.birds) set(L.birds.gain.gain, (env.biome[2] * 0.9 + env.biome[1] * 0.35) * env.daylight * (1 - env.rain) * (1 - env.tunnel) * quiet, 0.8);
     // birdsong in the forest by day
     this.birdT -= dt;
     if (this.birdT <= 0) {
       this.birdT = 0.7 + Math.random() * 4;
-      const p = env.biome[2] * env.daylight * (1 - env.rain) * (1 - env.tunnel) * (car ? clamp(1.2 - car.kmh / 140, 0.15, 1) : 1);
+      const p = L.birds ? 0 : env.biome[2] * env.daylight * (1 - env.rain) * (1 - env.tunnel) * (car ? clamp(1.2 - car.kmh / 140, 0.15, 1) : 1);
       if (Math.random() < p) { const f = 2400 + Math.random() * 2600, n = 2 + Math.floor(Math.random() * 4); for (let i = 0; i < n; i++) this.tone(f * (1 + Math.random() * 0.12), 0.07 + Math.random() * 0.06, 'sine', 0.03 + Math.random() * 0.03, this.amb, f * (0.8 + Math.random() * 0.5), i * 0.11); }
     }
-    if (!car || !this.spec) { set(this.engGain.gain, 0, 0.1); for (const g of [this.squealGain, this.rumbleGain, this.windGain, this.rollGain, this.scrapeGain, this.boostGain, this.intakeGain]) set(g.gain, 0, 0.1); return; }
+    if (!car || !this.spec) { set(this.engGain.gain, 0, 0.1); if (this.sampled) set(this.engBus.gain, 0, 0.1); for (const n of ['skid', 'gravel', 'wind']) if (L[n]) set(L[n].gain.gain, 0, 0.1); for (const g of [this.squealGain, this.rumbleGain, this.windGain, this.rollGain, this.scrapeGain, this.boostGain, this.intakeGain]) set(g.gain, 0, 0.1); return; }
     const s = this.spec.audio, rpm = car.rpm, thr = car.throttle, x = rpm / this.spec.redline;
     const f = rpm / 60 * s.cylinders / 2 * 0.5 * s.pitch; // firing fundamental (lowered an octave for body)
     set(this.osc[0].frequency, f * 0.5, 0.025); set(this.osc[1].frequency, f * 1.003, 0.025); set(this.osc[2].frequency, f * 1.5, 0.025); set(this.osc[3].frequency, f * 2.01, 0.025);
     set(this.oscGain[0].gain, 0.3 * s.bass + 0.1); set(this.oscGain[1].gain, 0.3); set(this.oscGain[2].gain, 0.05 + 0.14 * s.rasp * (0.4 + thr)); set(this.oscGain[3].gain, 0.08 + 0.2 * x * s.rasp);
     set(this.engFilter.frequency, (300 + x * 2600 + thr * 2400 * (0.5 + x)) * (1 - env.tunnel * 0.15), 0.05);
-    set(this.engGain.gain, (0.11 + 0.2 * thr + 0.12 * x) * (1 + env.tunnel * 0.5), 0.05);
+    if (this.sampled) {
+      // recorded layers: idle, low, mid, high, cross-faded by rpm and pitched to follow it
+      const target = (34 + x * 118) * s.pitch; // Hz of the layer fundamental we want to hear
+      const w = [1 - clamp((x - 0.14) / 0.14, 0, 1), clamp((x - 0.12) / 0.14, 0, 1) * (1 - clamp((x - 0.42) / 0.2, 0, 1)), clamp((x - 0.4) / 0.2, 0, 1) * (1 - clamp((x - 0.72) / 0.18, 0, 1)), clamp((x - 0.7) / 0.18, 0, 1)];
+      for (let i = 0; i < 4; i++) {
+        const e = this.eng[i];
+        set(e.src.playbackRate, clamp(i === 0 ? 0.9 + x * 3.2 : target / e.hz, 0.4, 3.2), 0.03);
+        set(e.gain.gain, w[i] * (i === 0 ? 0.55 : 0.8), 0.04);
+      }
+      set(this.engLP.frequency, (900 + x * 3200 + thr * 5200) * (1 - env.tunnel * 0.2), 0.06);
+      set(this.engBus.gain, (0.34 + 0.5 * thr + 0.16 * x) * (1 + env.tunnel * 0.45), 0.05);
+      // synth layer stays as a quiet sub-bass body under the recording
+      set(this.engGain.gain, (0.03 + 0.05 * thr) * s.bass, 0.05);
+    } else set(this.engGain.gain, (0.11 + 0.2 * thr + 0.12 * x) * (1 + env.tunnel * 0.5), 0.05);
     set(this.intakeGain.gain, thr * x * 0.11); set(this.intakeFilter.frequency, 500 + x * 1700);
     // overrun pops when lifting at high rpm
     if (this.lastThrottle > 0.6 && thr < 0.3 && x > 0.55) this.popT = 0.5 + s.rasp * 0.7;
@@ -109,12 +151,18 @@ export class GameAudio {
     let slide = 0, dirtSlide = 0;
     for (const w of car.wheels) { if (w.surface === 0) slide = Math.max(slide, w.slide); else dirtSlide = Math.max(dirtSlide, w.slide); }
     const spd = car.vel.length();
-    set(this.squealGain.gain, clamp((slide - 3) / 12, 0, 1) * 0.22 * (1 - car.wet * 0.7), 0.06); set(this.squealF.frequency, 950 + clamp(spd, 0, 60) * 9 + Math.sin(t * 31) * 40, 0.05);
+    const sq = clamp((slide - 3) / 11, 0, 1) * (1 - car.wet * 0.6);
+    if (L.skid) { set(L.skid.gain.gain, sq * 1.1, 0.05); set(L.skid.src.playbackRate, 0.85 + clamp(car.vel.length() / 60, 0, 1) * 0.3 + sq * 0.08, 0.1); }
+    set(this.squealGain.gain, L.skid ? 0 : sq * 0.22, 0.06); set(this.squealF.frequency, 950 + clamp(spd, 0, 60) * 9 + Math.sin(t * 31) * 40, 0.05);
     const off = car.grounded > 0 && car.surface > 0 ? 1 : 0;
-    set(this.rumbleGain.gain, off * clamp(spd / 30, 0, 1) * 0.3 + clamp(dirtSlide / 10, 0, 1) * 0.25, 0.08);
-    set(this.windGain.gain, clamp(spd / 85, 0, 1) ** 2 * 0.3 * (1 + env.tunnel * 0.6), 0.1); set(this.windF.frequency, 400 + spd * 14, 0.1);
+    if (L.gravel) { set(L.gravel.gain.gain, off * clamp(spd / 28, 0, 1) * 0.9 + clamp(dirtSlide / 10, 0, 1) * 0.5, 0.08); set(L.gravel.src.playbackRate, 0.7 + clamp(spd / 50, 0, 1) * 0.7, 0.1); }
+    set(this.rumbleGain.gain, (off * clamp(spd / 30, 0, 1) * 0.3 + clamp(dirtSlide / 10, 0, 1) * 0.25) * (L.gravel ? 0.35 : 1), 0.08);
+    const wv = clamp(spd / 80, 0, 1) ** 2;
+    if (L.wind) { set(L.wind.gain.gain, wv * 1.25 * (1 + env.tunnel * 0.5), 0.12); set(L.wind.src.playbackRate, 0.8 + clamp(spd / 90, 0, 1) * 0.8, 0.15); }
+    set(this.windGain.gain, wv * (L.wind ? 0.12 : 0.3) * (1 + env.tunnel * 0.6), 0.1); set(this.windF.frequency, 400 + spd * 14, 0.1);
     set(this.rollGain.gain, (car.grounded ? 1 : 0) * clamp(spd / 50, 0, 1) * 0.3, 0.08);
     set(this.scrapeGain.gain, car.scrape * 0.22, 0.03);
-    set(this.boostGain.gain, car.boosting ? 0.24 : 0, 0.08); set(this.boostF.frequency, 1200 + x * 2400, 0.1);
+    if (car.boosting && !this.wasBoost) this.play('turbo', 0.55, 1.1); this.wasBoost = car.boosting;
+    set(this.boostGain.gain, car.boosting ? 0.2 : 0, 0.08); set(this.boostF.frequency, 1200 + x * 2400, 0.1);
   }
 }

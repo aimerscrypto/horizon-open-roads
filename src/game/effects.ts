@@ -11,6 +11,7 @@ export class Effects {
   private skidPos = new Float32Array(MAXSKID * 12); private skidGeo = new THREE.BufferGeometry(); private skidNext = 0; private skidCount = 0;
   private last: (THREE.Vector3 | null)[] = [null, null, null, null];
   private acc = 0;
+  private streakU = { uCam: { value: new THREE.Vector3() }, uVel: { value: new THREE.Vector3() }, uAmount: { value: 0 } }; private streaks!: THREE.LineSegments;
 
   constructor() {
     const g = new THREE.BufferGeometry();
@@ -33,7 +34,22 @@ export class Effects {
     this.skidGeo.setIndex(new THREE.BufferAttribute(idx, 1)); this.skidGeo.setDrawRange(0, 0);
     const skid = new THREE.Mesh(this.skidGeo, new THREE.MeshBasicMaterial({ color: 0x050505, transparent: true, opacity: 0.5, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
     skid.frustumCulled = false; skid.renderOrder = 2;
-    this.group.add(skid, this.points);
+    // wind streaks: world-fixed motes stretched along the velocity, visible only at speed
+    const N = 420, sp = new Float32Array(N * 6), se = new Float32Array(N * 2);
+    for (let i = 0; i < N; i++) { const x = Math.random() * 60, y = Math.random() * 14, z = Math.random() * 60; sp.set([x, y, z, x, y, z], i * 6); se[i * 2 + 1] = 1; }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3)); sg.setAttribute('end', new THREE.BufferAttribute(se, 1));
+    this.streaks = new THREE.LineSegments(sg, new THREE.ShaderMaterial({
+      uniforms: this.streakU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: `uniform vec3 uCam, uVel; attribute float end; varying float vA;
+        void main(){ vec3 box = vec3(60.0, 14.0, 60.0);
+          vec3 p = mod(position - uCam, box) - box * 0.5 + uCam; p.y += 3.0;
+          p -= uVel * 0.045 * end;
+          float d = length(p - uCam); vA = smoothstep(3.0, 9.0, d) * (1.0 - smoothstep(20.0, 30.0, d)) * (1.0 - end * 0.7);
+          gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0); }`,
+      fragmentShader: 'uniform float uAmount; varying float vA; void main(){ gl_FragColor = vec4(vec3(0.9, 0.93, 1.0) * 0.5, 1.0) * uAmount * vA; }',
+    }));
+    this.streaks.frustumCulled = false; this.streaks.renderOrder = 6;
+    this.group.add(skid, this.points, this.streaks);
   }
 
   private emit(x: number, y: number, z: number, vx: number, vy: number, vz: number, r: number, g: number, b: number, a: number, size: number, life: number, grow: number, grav = 0) {
@@ -46,9 +62,11 @@ export class Effects {
     for (let i = 0; i < n; i++) this.emit(p.x, p.y, p.z, v.x * 0.4 + (Math.random() - 0.5) * 7, 1 + Math.random() * 4, v.z * 0.4 + (Math.random() - 0.5) * 7, 3, 1.6, 0.5, 1, 0.07, 0.3 + Math.random() * 0.4, 0, 12);
   }
 
-  update(dt: number, car: CarPhysics, light: THREE.Color, viewportH: number, wet: number) {
+  update(dt: number, car: CarPhysics, light: THREE.Color, viewportH: number, wet: number, cam?: THREE.Vector3) {
+    if (cam) this.streakU.uCam.value.copy(cam);
     const m = this.points.material as THREE.ShaderMaterial; m.uniforms.uScale.value = viewportH * 0.9; m.uniforms.uLight.value.copy(light);
     this.acc += dt;
+    { const v = car.vel.length(), a = Math.min(1, Math.max(0, (v - 38) / 45)); this.streaks.visible = a > 0.01; this.streakU.uAmount.value = a * 0.55; this.streakU.uVel.value.copy(car.vel); }
     const emitNow = this.acc > 1 / 50; if (emitNow) this.acc = 0;
     const spd = car.vel.length();
     for (let i = 0; i < 4; i++) {

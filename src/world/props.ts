@@ -9,111 +9,61 @@ import { HeightField } from './terrain';
 
 const CS = 140, CN = WORLD_SIZE / CS; // 32
 
-// ---------------------------------------------------------------- conifer
-function makeTreeAtlas(bark: THREE.Texture): THREE.CanvasTexture {
-  const S = 512, c = document.createElement('canvas'); c.width = c.height = S;
-  const g = c.getContext('2d')!;
-  const rnd = mulberry32(99), FW = Math.floor(S * 0.75);
-  // needle skirt: opaque top, ragged hanging fringe
-  g.save(); g.beginPath(); g.rect(0, 0, FW, S); g.clip();
-  const grd = g.createLinearGradient(0, 0, 0, S); grd.addColorStop(0, '#22381a'); grd.addColorStop(1, '#3f6a2a');
-  g.fillStyle = grd; g.fillRect(0, 0, FW, S * 0.3);
-  for (let i = 0; i < 150; i++) {
-    const x = rnd() * FW, w = 10 + rnd() * 22, len = S * (0.5 + rnd() * 0.5), l = 34 + rnd() * 22, gr = 34 + rnd() * 20;
-    for (const ox of [-FW, 0, FW]) {
-      g.fillStyle = `hsl(${92 + rnd() * 30}, ${gr * 0.72}%, ${l * 0.5}%)`;
-      g.beginPath(); g.moveTo(x + ox - w, 0); g.lineTo(x + ox + w, 0); g.lineTo(x + ox + (rnd() - 0.5) * 8, len); g.closePath(); g.fill();
-    }
-  }
-  for (let i = 0; i < 2600; i++) { // needles
-    const x = rnd() * FW, y = rnd() * S * 0.92, a = Math.PI / 2 + (rnd() - 0.5) * 1.5, l = 5 + rnd() * 9;
-    if (g.getImageData(Math.min(FW - 1, x | 0), y | 0, 1, 1).data[3] < 10) continue;
-    g.strokeStyle = `hsla(${80 + rnd() * 44}, ${24 + rnd() * 24}%, ${14 + rnd() * 30}%, 0.95)`; g.lineWidth = 1 + rnd() * 1.2;
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
-  }
-  g.restore();
-  // bark strip
-  const img = bark.image as CanvasImageSource | undefined;
-  if (img && (img as HTMLImageElement).width) g.drawImage(img, 0, 0, 256, 1024, FW, 0, S - FW, S);
-  else { g.fillStyle = '#4a3a2c'; g.fillRect(FW, 0, S - FW, S); }
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.anisotropy = 4;
-  t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter;
-  return t;
-}
-
-/** Unit-height conifer: trunk + cone skirts. */
-function coniferGeometry(tiers: number, seg: number, seed: number): THREE.BufferGeometry {
-  const rnd = mulberry32(seed);
-  const pos: number[] = [], nrm: number[] = [], uv: number[] = [], col: number[] = [], idx: number[] = [];
-  const push = (x: number, y: number, z: number, nx: number, ny: number, nz: number, u: number, v: number, c: number) => { pos.push(x, y, z); nrm.push(nx, ny, nz); uv.push(u, v); col.push(c, c, c); return pos.length / 3 - 1; };
-  // trunk
-  const ts = 6;
-  for (let i = 0; i <= ts; i++) {
-    const a = i / ts * Math.PI * 2, cx = Math.cos(a), cz = Math.sin(a);
-    push(cx * 0.02, 0, cz * 0.02, cx, 0, cz, 0.76 + 0.23 * i / ts, 0, 0.85); push(cx * 0.006, 0.82, cz * 0.006, cx, 0, cz, 0.76 + 0.23 * i / ts, 1, 0.85);
-  }
-  for (let i = 0; i < ts; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
-  // skirts, bottom to top
-  for (let k = 0; k < tiers; k++) {
-    const t = k / (tiers - 1), y0 = 0.16 + t * 0.7, r = (0.2 * Math.pow(1 - t, 0.8) + 0.035) * (0.88 + rnd() * 0.24);
-    const hgt = 0.2 * (1 - t * 0.45), rot = rnd() * 6.28, uo = rnd();
-    const base = pos.length / 3;
-    for (let i = 0; i <= seg; i++) {
-      const a = rot + i / seg * Math.PI * 2, cx = Math.cos(a), cz = Math.sin(a), wob = (i % 2 === 0 ? 1.0 : 0.6) * (0.86 + rnd() * 0.28);
-      const u = (uo + i / seg * 1.5) * 0.75 % 0.75; // stay within the foliage strip
-      push(cx * r * 0.1, y0 + hgt, cz * r * 0.1, cx * 0.5, 0.86, cz * 0.5, (uo + i / seg * 1.5) % 1 * 0.74, 0.02, 0.5);
-      push(cx * r * wob, y0 - hgt * 0.3 * wob, cz * r * wob, cx * 0.85, 0.5, cz * 0.85, (uo + i / seg * 1.5) % 1 * 0.74, 0.98, 1.0);
-      void u;
-    }
-    for (let i = 0; i < seg; i++) { const a = base + i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+// ---------------------------------------------------------------- firs
+// Trees are billboards baked from the Poly Haven "Fir Tree 01" photoscan (see scripts/bake-trees.html):
+// a 6x2 atlas holding 3 tree variants x 4 view angles. Each tree is two crossed quads showing two perpendicular views.
+const FIR = { cols: 6, rows: 2, halfW: 3.214 / 19.304 };
+function firGeometry(): THREE.BufferGeometry {
+  const w = FIR.halfW, pos: number[] = [], uv: number[] = [], nrm: number[] = [], quad: number[] = [], idx: number[] = [];
+  for (let q = 0; q < 2; q++) {
+    const ax = q === 0 ? 1 : 0, az = q === 0 ? 0 : 1, b = q * 4;
+    pos.push(-w * ax, 0, -w * az, w * ax, 0, w * az, -w * ax, 1, -w * az, w * ax, 1, w * az);
+    uv.push(0, 0, 1, 0, 0, 1, 1, 1);
+    for (let k = 0; k < 4; k++) { nrm.push(0, 1, 0); quad.push(q); }
+    idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
   }
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx);
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); g.setAttribute('quad', new THREE.Float32BufferAttribute(quad, 1)); g.setIndex(idx);
   return g;
+}
+function patchFir(m: THREE.Material, uTime: { value: number }) {
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uTime = uTime;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float quad; attribute float aTile; uniform float uTime;')
+      .replace('#include <uv_vertex>', `#include <uv_vertex>
+        float fv = floor(aTile / 2.0), fp = aTile - fv * 2.0, tile = fv * 4.0 + mod(fp + quad * 2.0, 4.0);
+        vMapUv = vec2((mod(tile, ${FIR.cols}.0) + uv.x) / ${FIR.cols}.0, 1.0 - (floor(tile / ${FIR.cols}.0) + 1.0 - uv.y) / ${FIR.rows}.0);`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        float sway = sin(uTime * 1.1 + instanceMatrix[3].x * 0.37 + instanceMatrix[3].z * 0.21) * 0.011 * uv.y * uv.y;
+        transformed.x += sway; transformed.z += sway * 0.6;`);
+    // the atlas is loaded premultiplied so filtered edges keep the right colour
+    sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb /= max(diffuseColor.a, 0.04);');
+  };
 }
 
 interface PropType { geos: THREE.BufferGeometry[]; mats: THREE.Material[]; range: number; cast: boolean; height: number; }
 interface Inst { type: string; m: THREE.Matrix4; c: THREE.Color; }
-interface Cell { cx: number; cz: number; center: THREE.Vector3; insts: Map<string, Inst[]>; meshes: Map<string, THREE.InstancedMesh[]>; trees: number[]; near: THREE.InstancedMesh | null; far: THREE.InstancedMesh | null; }
+interface Cell { cx: number; cz: number; center: THREE.Vector3; insts: Map<string, Inst[]>; meshes: Map<string, THREE.InstancedMesh[]>; trees: number[]; tree: THREE.InstancedMesh | null; }
 
 export class Props {
   readonly group = new THREE.Group();
   private types = new Map<string, PropType>();
   private cells: Cell[] = [];
-  private treeGeo: THREE.BufferGeometry; private treeMat: THREE.Material; private farGeo: THREE.BufferGeometry; private farMat: THREE.Material;
-  nearRange = 190; farRange = 1500; density = 1; rangeScale = 1;
+  private treeGeo: THREE.BufferGeometry; private treeMat: THREE.Material; private treeDepth: THREE.Material; readonly treeU = { value: 0 };
+  nearRange = 190; farRange = 1150; treeShadows = true; density = 1; rangeScale = 1;
   treeCount = 0; propCount = 0;
 
   constructor(private hf: HeightField, A: Assets, readonly colliders: Colliders, renderer: THREE.WebGLRenderer, density: number) {
     this.density = density;
-    const atlas = makeTreeAtlas(A.tex.pine_bark);
-    this.treeGeo = coniferGeometry(9, 10, 5);
-    this.treeMat = new THREE.MeshLambertMaterial({ map: atlas, alphaTest: 0.45, side: THREE.DoubleSide, vertexColors: true });
-    // bake an impostor of the conifer
-    const rt = new THREE.WebGLRenderTarget(128, 256, { colorSpace: THREE.SRGBColorSpace });
-    {
-      const sc = new THREE.Scene(), cam = new THREE.OrthographicCamera(-0.27, 0.27, 1.0, 0, 0.1, 10);
-      cam.position.set(0, 0, 3); cam.lookAt(0, 0.5, 0); cam.position.y = 0; cam.rotation.set(0, 0, 0);
-      const m = new THREE.Mesh(this.treeGeo, new THREE.MeshBasicMaterial({ map: atlas, alphaTest: 0.45, side: THREE.DoubleSide, vertexColors: true }));
-      sc.add(m);
-      const prevClear = renderer.getClearAlpha(), prevTM = renderer.toneMapping;
-      renderer.toneMapping = THREE.NoToneMapping; renderer.setClearAlpha(0); renderer.setRenderTarget(rt); renderer.clear(); renderer.render(sc, cam);
-      renderer.setRenderTarget(null); renderer.setClearAlpha(prevClear); renderer.toneMapping = prevTM;
-    }
-    rt.texture.generateMipmaps = false;
-    const fg = new THREE.BufferGeometry(), w = 0.27;
-    const fp: number[] = [], fu: number[] = [], fn: number[] = [], fi: number[] = [];
-    for (let q = 0; q < 2; q++) {
-      const ax = q === 0 ? 1 : 0, az = q === 0 ? 0 : 1, b = q * 4;
-      fp.push(-w * ax, 0, -w * az, w * ax, 0, w * az, -w * ax, 1, -w * az, w * ax, 1, w * az);
-      fu.push(0, 0, 1, 0, 0, 1, 1, 1); for (let k = 0; k < 4; k++) fn.push(0, 1, 0);
-      fi.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
-    }
-    fg.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3)); fg.setAttribute('uv', new THREE.Float32BufferAttribute(fu, 2)); fg.setAttribute('normal', new THREE.Float32BufferAttribute(fn, 3)); fg.setIndex(fi);
-    this.farGeo = fg;
-    this.farMat = new THREE.MeshLambertMaterial({ map: rt.texture, alphaTest: 0.4, side: THREE.DoubleSide, color: 0xd8d8d8 });
-
+    const atlas = A.tex.fir_atlas;
+    atlas.wrapS = atlas.wrapT = THREE.ClampToEdgeWrapping; atlas.premultiplyAlpha = true; atlas.anisotropy = 4; atlas.needsUpdate = true;
+    this.treeGeo = firGeometry();
+    this.treeMat = new THREE.MeshLambertMaterial({ map: atlas, alphaTest: 0.42, side: THREE.DoubleSide, color: 0xffffff, emissive: 0x10140c });
+    this.treeDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: atlas, alphaTest: 0.42, side: THREE.DoubleSide });
+    patchFir(this.treeMat, this.treeU); patchFir(this.treeDepth, this.treeU);
+    void renderer;
     // GLB prop types
     const reg = (id: string, range: number, cast: boolean, sink = 0.08) => {
       const g = A.models[id]; if (!g) return;
@@ -140,7 +90,7 @@ export class Props {
 
     for (let cz = 0; cz < CN; cz++) for (let cx = 0; cx < CN; cx++) {
       const x = cx * CS - HALF + CS / 2, z = cz * CS - HALF + CS / 2;
-      this.cells.push({ cx, cz, center: new THREE.Vector3(x, hf.sample(x, z), z), insts: new Map(), meshes: new Map(), trees: [], near: null, far: null });
+      this.cells.push({ cx, cz, center: new THREE.Vector3(x, hf.sample(x, z), z), insts: new Map(), meshes: new Map(), trees: [], tree: null });
     }
     this.scatter(sizeOf);
     this.buildMeshes();
@@ -168,16 +118,16 @@ export class Props {
         return { x, z, y: hf.sample(x, z), d: hf.distToRoad(x, z), ny: hf.normal(x, z, n).y, water: hf.inWater(x, z) };
       };
       // ---- conifers
-      const nTree = Math.round(250 * D);
+      const nTree = Math.round(340 * D);
       for (let i = 0; i < nTree; i++) {
         const p = pick(); if (!p || p.water || p.d < 9.5 || p.ny < 0.74) continue;
         const clump = 0.35 + 0.65 * (0.5 + 0.5 * fbm(p.x / 170, p.z / 170, 2, 77));
         let prob = b[2] * clump * (p.d < 60 ? 1.0 : 0.62) + b[1] * 0.24 * clump * (p.y < 450 ? 1 : 0) * (p.d < 120 ? 1.2 : 0.7);
         if (p.d < 16) prob *= 0.55;
         if (rnd() > prob) continue;
-        const h = (11 + rnd() * 12) * (b[1] > 0.5 ? 0.8 : 1), tint = 0.72 + rnd() * 0.36;
+        const h = (17 + rnd() * 13) * (b[1] > 0.5 ? 0.82 : 1), tint = 0.74 + rnd() * 0.34;
         cell.trees.push(p.x, p.y - 0.25, p.z, h, rnd() * 6.28, tint);
-        this.colliders.add(p.x, p.z, 0.28 + h * 0.012, p.y + h);
+        this.colliders.add(p.x, p.z, 0.26 + h * 0.006, p.y + h);
         this.treeCount++;
       }
       // ---- rocks, plants
@@ -243,7 +193,7 @@ export class Props {
         }
       }
     }
-    void hash2; void noise2;
+    void noise2;
   }
 
   /** Place a specific prop (used by set dressing). */
@@ -270,17 +220,18 @@ export class Props {
         cell.meshes.set(type, arr);
       }
       const nt = cell.trees.length / 6;
-      if (nt && !cell.far) {
-        const far = new THREE.InstancedMesh(this.farGeo, this.farMat, nt), near = new THREE.InstancedMesh(this.treeGeo, this.treeMat, nt);
+      if (nt && !cell.tree) {
+        const im = new THREE.InstancedMesh(this.treeGeo, this.treeMat, nt), tiles = new Float32Array(nt);
         for (let i = 0; i < nt; i++) {
           const o = i * 6, h = cell.trees[o + 3];
           dummy.position.set(cell.trees[o], cell.trees[o + 1], cell.trees[o + 2]); dummy.rotation.set(0, cell.trees[o + 4], 0); dummy.scale.set(h, h, h); dummy.updateMatrix();
-          far.setMatrixAt(i, dummy.matrix); near.setMatrixAt(i, dummy.matrix);
-          const tn = cell.trees[o + 5]; col.setRGB(tn * 0.95, tn, tn * 0.9); far.setColorAt(i, col); near.setColorAt(i, col);
+          im.setMatrixAt(i, dummy.matrix);
+          const tn = cell.trees[o + 5]; col.setRGB(tn * 1.5, tn * 1.5, tn * 1.3); im.setColorAt(i, col);
+          tiles[i] = Math.floor(hash2(i, cell.cx * 131 + cell.cz, 5) * 6); // variant (0-2) x view pair (0-1)
         }
-        far.computeBoundingSphere(); near.computeBoundingSphere();
-        near.castShadow = true; near.receiveShadow = false; far.visible = near.visible = false;
-        this.group.add(far, near); cell.far = far; cell.near = near;
+        im.geometry = this.treeGeo.clone(); im.geometry.setAttribute('aTile', new THREE.InstancedBufferAttribute(tiles, 1));
+        im.computeBoundingSphere(); im.customDepthMaterial = this.treeDepth; im.receiveShadow = false; im.visible = false;
+        this.group.add(im); cell.tree = im;
       }
     }
   }
@@ -289,7 +240,7 @@ export class Props {
     const rs = this.rangeScale;
     for (const cell of this.cells) {
       const d = Math.max(0, Math.hypot(cell.center.x - cam.x, cell.center.z - cam.z) - CS * 0.71);
-      if (cell.near) { const nearOn = d < this.nearRange * rs; cell.near.visible = nearOn; cell.far!.visible = !nearOn && d < this.farRange * rs; }
+      if (cell.tree) { cell.tree.visible = d < this.farRange * rs; cell.tree.castShadow = this.treeShadows && d < this.nearRange * rs; }
       for (const [type, arr] of cell.meshes) { const on = d < this.types.get(type)!.range * rs; for (const m of arr) m.visible = on; }
     }
   }

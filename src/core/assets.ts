@@ -34,13 +34,14 @@ export class Assets {
     for (const id of ['asphalt_04', 'red_sand', 'forest_ground_04', 'cliff_side', 'gravel_road', 'aerial_grass_rock', 'concrete_wall_008', 'pine_bark', 'aerial_sand']) {
       T.push([id, id + '_diff', true], [id + '_n', id + '_nor', false]);
     }
+    T.push(['fir_atlas', 'fir_atlas', true]);
     const M = ['quiver_tree_01', 'wild_rooibos_bush', 'shrub_02', 'fern_02', 'namaqualand_boulder_02', 'namaqualand_boulder_05', 'namaqualand_cliff_01',
       'namaqualand_cliff_02', 'rock_face_01', 'rock_face_02', 'rock_07', 'rock_moss_set_01', 'concrete_road_barrier', 'tree_stump_01',
       'wooden_picnic_table', 'dead_tree_trunk'];
     await Promise.all([
       ...T.map(t => this.loadTex(t[0], t[1], t[2])),
       ...M.map(m => this.loadModel(m, 'models/' + m + '.glb')),
-      this.loadModel('concept', 'cars/concept.glb'),
+      this.loadModel('concept', 'cars/concept.glb'), this.loadModel('car_coupe', 'cars/coupe.glb'),
       new Promise<void>(res => this.rgbe.load(BASE + 'hdri/sky_1k.hdr', t => { t.mapping = THREE.EquirectangularReflectionMapping; this.hdr = t; res(); }, undefined, () => { this.errors.push('hdri'); res(); })),
     ]);
   }

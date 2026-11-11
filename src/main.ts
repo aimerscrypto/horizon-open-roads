@@ -130,9 +130,9 @@ class Game {
     if (initial || !this.car) { const road = this.net.byId(START.road), p = road.pointAt(START.s, 2.2); x = p.x; z = p.z; yaw = road.headingAt(START.s); refY = p.y + 2; }
     else { x = this.car.pos.x; z = this.car.pos.z; yaw = this.car.yaw; refY = this.car.pos.y + 1; }
     if (this.vis) { this.vis.dispose(); this.env?.clearCarEnv(); }
+    this.vis = new CarVisual(spec, this.assets.models.concept, this.assets.models); // may refine the spec's wheel layout from the model
     this.car = new CarPhysics(spec, this.ground, this.colliders);
     this.car.place(x, z, yaw, refY);
-    this.vis = new CarVisual(spec, this.assets.models.concept);
     const paints = (this.save.data as any).paints as Record<string, number> | undefined;
     if (paints && paints[id] != null) this.vis.setPaint(paints[id]);
     this.scene.add(this.vis.group); this.registerCarEnv();
@@ -192,7 +192,7 @@ class Game {
     this.env.setShadowQuality(q.shadow, q.shadowRange); r.shadowMap.enabled = q.shadow > 0; this.blob.visible = q.shadow === 0;
     this.terrain.uniforms.uDetail.value = s.quality === 'low' ? 0 : 1; this.terrain.setCastShadows(s.quality === 'high');
     this.roads.setDetail(s.quality === 'high'); this.env.setEnvEnabled(this.roads.asphalt, s.quality !== 'low');
-    this.terrain.lodScale = q.lod; this.props.rangeScale = q.range; this.props.nearRange = q.near / q.range;
+    this.terrain.lodScale = q.lod; this.props.rangeScale = q.range; this.props.treeShadows = s.quality === 'high'; this.props.nearRange = q.near / q.range;
     this.scene.traverse(o => { const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (m) (Array.isArray(m) ? m : [m]).forEach(x => x.needsUpdate = true); });
     if (q.bloom && !this.composer) {
       const rt = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: 4 });
@@ -275,7 +275,9 @@ class Game {
     }
     this.tunnelLight.intensity = this.tunnel * 150; this.tunnelLight.position.set(car.pos.x, car.pos.y + 4.2, car.pos.z);
     this.terrain.update(cam.position, 2); this.props.update(cam.position); this.roads.update(dt, this.env.wet); this.terrain.uniforms.uWet.value = this.env.wet;
-    this.fx.update(dt, car, this.env.hemi.color, innerHeight, this.env.wet);
+    this.fx.update(dt, car, this.env.hemi.color, innerHeight, this.env.wet, cam.position);
+    this.props.treeU.value += dt;
+    this.ui.setSpeedFx(driving ? clamp((car.vel.length() - 36) / 50, 0, 1) : 0, car.boosting);
     if (this.blob.visible) { const g = car.wheels[0].contact.y; this.blob.position.set(car.pos.x, (car.grounded ? g : car.pos.y - car.spec.cgHeight) + 0.04, car.pos.z); this.blob.scale.set(car.spec.body.width * 1.7, car.spec.body.length * 1.35, 1); this.blob.rotation.z = car.yaw; }
     biomeAt(car.pos.x, car.pos.z, this.biome);
     this.audio.update(dt, driving ? car : null, { rain: this.env.rain, daylight: this.env.daylight, biome: this.biome, tunnel: this.tunnel });

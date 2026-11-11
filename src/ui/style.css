@@ -169,3 +169,10 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 #warn { position: absolute; left: 50%; top: 44%; transform: translateX(-50%); font-size: 15px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--accent-2); text-shadow: 0 1px 10px #000; display: none; }
 #warn.on { display: block; }
 @media (max-width: 900px) { .carcard .tag { position: static; display: block; margin-top: 4px; } .carlist h2, .carinfo h2 { font-size: 24px; } .cluster .speed { font-size: 70px; } .cluster { transform: scale(0.75); transform-origin: bottom right; } #minimap { width: 150px; height: 150px; } .place { bottom: calc(3vh + 162px); } .controls { display: none; } #hint { display: none; } .evgrid, .setgrid { grid-template-columns: 1fr; } }
+
+/* ---------- speed tunnel: darkened, streaked edges that fade in with speed */
+#speedfx { position: absolute; inset: 0; opacity: 0; transition: opacity 0.25s linear; pointer-events: none;
+  background:
+    radial-gradient(ellipse 62% 58% at 50% 46%, rgba(0, 0, 0, 0) 55%, rgba(4, 6, 10, 0.5) 100%),
+    repeating-conic-gradient(from 0deg at 50% 46%, rgba(255, 255, 255, 0) 0deg 2.2deg, rgba(255, 255, 255, 0.05) 2.6deg 3deg);
+  -webkit-mask-image: radial-gradient(ellipse 70% 66% at 50% 46%, transparent 48%, #000 96%); mask-image: radial-gradient(ellipse 70% 66% at 50% 46%, transparent 48%, #000 96%); }

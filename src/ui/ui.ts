@@ -94,6 +94,7 @@ export class UI {
       <div class="rew"><div>Credits<b id="rCr"></b></div><div>XP<b id="rXp"></b></div><div>Best<b id="rBest"></b></div></div>
       <div class="row" style="justify-content:center"><button class="btn" data-a="retry">Retry</button><button class="btn go" data-a="resume">Continue</button></div>
     </div></div>
+    <div id="speedfx"></div>
     <div id="hud">
       <div class="topleft"><div class="lvl" id="hLevel">1</div><div>Credits<b id="hCredits">0</b></div><div>Stars<b id="hStars">0</b></div></div>
       <div class="topright"><span id="hWeather">Clear</span><b id="hClock">16:30</b></div>
@@ -263,6 +264,8 @@ export class UI {
     this.el.drift.classList.toggle('on', !!d); if (!d) return;
     this.el.dName.textContent = 'Drift zone · ' + d.name; this.el.dScore.textContent = Math.round(d.score).toLocaleString(); this.el.dCombo.textContent = 'x' + d.combo.toFixed(1);
   }
+  private sfx = -1;
+  setSpeedFx(a: number, boost: boolean) { const v = Math.round((a * 0.85 + (boost ? 0.15 : 0)) * 20) / 20; if (v !== this.sfx) { this.sfx = v; ($('#speedfx') as HTMLElement).style.opacity = String(v); } }
   setWarn(on: boolean) { this.el.warn.classList.toggle('on', on); }
 
   // ---------------- maps

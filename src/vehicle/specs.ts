@@ -7,7 +7,10 @@ export interface BodyStyle {
 }
 export interface CarSpec {
   id: string; name: string; klass: string; tagline: string; price: number;
-  model: 'glb' | 'proc'; body: BodyStyle;
+  model: 'glb' | 'proc';
+  /** downloaded concept-car rig: uniform scale, materials treated as paint / glass, optional forced flip */
+  scan?: { scale: number; paint: string[]; glass: string[]; flip?: boolean };
+  body: BodyStyle;
   mass: number; wheelbase: number; track: number; cgHeight: number; wheelRadius: number; wheelWidth: number;
   drive: 'rwd' | 'awd';
   /** rear torque share for AWD */ rearBias: number;
@@ -26,7 +29,7 @@ export interface CarSpec {
 export const CARS: CarSpec[] = [
   {
     id: 'coupe', name: 'Kestrel S', klass: 'Sports Coupe', tagline: 'Light, eager and happiest sideways.', price: 0,
-    model: 'proc', body: { kind: 'coupe', length: 4.38, width: 1.86, height: 1.27, ride: 0.13, paint: 0xd4380d },
+    model: 'proc', scan: { scale: 1.07, paint: ['body_color_supra.001'], glass: [] }, body: { kind: 'coupe', length: 4.38, width: 1.86, height: 1.27, ride: 0.13, paint: 0xd4380d },
     mass: 1380, wheelbase: 2.58, track: 1.6, cgHeight: 0.46, wheelRadius: 0.335, wheelWidth: 0.27,
     drive: 'rwd', rearBias: 1,
     maxTorque: 540, peakRpm: 5200, redline: 7600, idle: 950, gears: [3.4, 2.2, 1.6, 1.24, 1.0, 0.82], final: 3.7, shiftTime: 0.17,
@@ -39,7 +42,7 @@ export const CARS: CarSpec[] = [
   },
   {
     id: 'gt', name: 'Aurelia GT', klass: 'Grand Tourer', tagline: 'Twelve cylinders and a continent to cross.', price: 30000,
-    model: 'proc', body: { kind: 'gt', length: 4.78, width: 1.94, height: 1.31, ride: 0.14, paint: 0x0e2a4a },
+    model: 'proc', scan: { scale: 0.9, paint: ['silver'], glass: [] }, body: { kind: 'gt', length: 4.78, width: 1.94, height: 1.31, ride: 0.14, paint: 0x0e2a4a },
     mass: 1790, wheelbase: 2.82, track: 1.64, cgHeight: 0.5, wheelRadius: 0.35, wheelWidth: 0.28,
     drive: 'rwd', rearBias: 1,
     maxTorque: 880, peakRpm: 4600, redline: 7000, idle: 800, gears: [3.3, 2.15, 1.55, 1.2, 0.98, 0.8, 0.66], final: 3.25, shiftTime: 0.2,
@@ -52,7 +55,7 @@ export const CARS: CarSpec[] = [
   },
   {
     id: 'suv', name: 'Bastion X', klass: 'Off-Road SUV', tagline: 'Long-travel suspension. The road is optional.', price: 45000,
-    model: 'proc', body: { kind: 'suv', length: 4.72, width: 1.98, height: 1.82, ride: 0.3, paint: 0x4d5a3a },
+    model: 'proc', scan: { scale: 1.0, paint: ['body'], glass: [] }, body: { kind: 'suv', length: 4.72, width: 1.98, height: 1.82, ride: 0.3, paint: 0x4d5a3a },
     mass: 2150, wheelbase: 2.86, track: 1.68, cgHeight: 0.66, wheelRadius: 0.43, wheelWidth: 0.31,
     drive: 'awd', rearBias: 0.55,
     maxTorque: 640, peakRpm: 3600, redline: 6200, idle: 750, gears: [3.9, 2.4, 1.6, 1.18, 0.92, 0.74], final: 3.9, shiftTime: 0.24,
