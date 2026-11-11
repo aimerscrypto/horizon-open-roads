@@ -54,7 +54,7 @@ export class UI {
         </div>
         <div class="statline"><div>Level<b id="mLevel">1</b></div><div>Credits<b id="mCredits">0</b></div><div>Stars<b id="mStars">0</b></div><div>Driven<b id="mDist">0 km</b></div></div>
       </div>
-      <div class="right">Desert · Mountain · Forest<br/>12.7 km loop · 4 cars · 11 events<br/><span style="opacity:.7">Concept car model: Khronos Group / Unity Fan (CC BY 4.0)<br/>Rocks, plants &amp; textures: Poly Haven (CC0)</span></div>
+      <div class="right">Desert · Mountain · Forest<br/>12.7 km loop · 4 cars · 11 events<br/><span style="opacity:.7">Cars: Unity Fan (public domain) · Khronos Car Concept (CC BY 4.0)<br/>Trees, rocks &amp; textures: Poly Haven (CC0) · Audio: OpenGameArt, Freesound (CC0)</span></div>
     </div>
     <div id="garage" class="screen">
       <div class="carlist"><div class="eyebrow">Garage</div><h2>Choose your car</h2><div id="carCards" style="display:flex;flex-direction:column;gap:10px"></div>

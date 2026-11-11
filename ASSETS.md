@@ -12,7 +12,21 @@ Source files are downloaded by `npm run assets:fetch` into `assets-src/` (not co
 
 Attribution required: "Car Concept" by the Khronos Group, CC BY 4.0, derived from a CC0 model by Unity Fan. It is shown on the main menu and in the README.
 
-The other three cars (Kestrel S, Aurelia GT, Bastion X) are original bodies generated in code (`src/vehicle/carBody.ts`). They reuse the wheel, tyre and brake meshes of the Car Concept model above.
+### Concept cars by Unity Fan
+
+| File | Asset | Source | Licence |
+| --- | --- | --- | --- |
+| `cars/coupe.glb` (Kestrel S) | FREE Concept Car 040 | https://sketchfab.com/3d-models/9363e93183274ea1bad403ea6fe3ee79 | See note |
+| `cars/gt.glb` (Aurelia GT) | FREE Concept Car 002 02 | https://sketchfab.com/3d-models/b7ce8d2d64394e959abe47b589eee633 | See note |
+| `cars/suv.glb` (Bastion X) | FREE Concept Car 006 | https://sketchfab.com/3d-models/a4e19bb6e6394c4a95d4319ef7d265ba | See note |
+
+Author: Unity Fan (https://sketchfab.com/unityfan777). Licence note: the author's description on each model page says
+"This is public domain (CC0) ... can be used by anybody for anything. No attribution required." The `license.txt` shipped in
+each Sketchfab download lists the Sketchfab Standard licence (use in all media and derivative works, commercially or not).
+Both permit use inside this game; anyone redistributing the model files on their own should check the Standard terms.
+
+Changes (`scripts/prep-cars.mjs`): door/hatch skinning baked to a closed pose, animation clips removed, wheel parts tagged and
+meshes merged per material, geometry simplified to 95k–190k triangles, textures resized to 1024 px WebP. Body paint is recoloured at runtime.
 
 ## Environment models — Poly Haven (CC0)
 
@@ -58,10 +72,36 @@ Each has a diffuse and a normal map under `tex/<name>_{diff,nor}.webp` (1024 px)
 | --- | --- |
 | `hdri/sky_1k.hdr` | Kloofendal 48d Partly Cloudy (Pure Sky), 1k — used for reflections on car paint, glass, wet tarmac and water |
 
+## Trees — Poly Haven (CC0)
+
+| File | Asset | Notes |
+| --- | --- | --- |
+| `tex/fir_atlas.webp` | Fir Tree 01 (photoscan, about 7 million triangles) | Rendered into a 6x2 billboard atlas (3 trees x 4 view angles) by `scripts/bake-trees.html`; the scan itself is not shipped |
+
+## Audio recordings (all CC0)
+
+Cut, looped and normalised by `scripts/prep-audio.py`. Files are under `public/assets/audio/`.
+
+| File | Source |
+| --- | --- |
+| `engine_0/1/3/5.wav` | "Racing car engine sound loops" by domasx2, https://opengameart.org/content/racing-car-engine-sound-loops |
+| `skid.wav` | Freesound 71736 "Chrysler LHS tire squeal 01" |
+| `gravel.wav` | Freesound 251662 "Tires on Gravel Road 2" |
+| `wind.wav` | Freesound 444921 "Wind through trees (loop)" |
+| `rain.mp3` | Freesound 321885 "Steady Rainstorm" |
+| `birds.mp3` | Freesound 566207 "Morning Birds Ambience" |
+| `crickets.mp3` | Freesound 521843 "Outdoors_Night_CricketsLoop" |
+| `crash_big.mp3` | Freesound 237375 "Car Crash" |
+| `crash_metal.mp3` | Freesound 321482 "Metal Hit 2" |
+| `crash_light.mp3` | Freesound 340539 "Car_Door_Hit" |
+| `turbo.mp3` | Freesound 659544 "Turbo Spooling and Blow Off" |
+
+Freesound pages are at `https://freesound.org/s/<id>/`. All were listed under Creative Commons 0 when downloaded.
+
 ## Created for this project (no third-party licence)
 
-- Terrain, roads, bridges, tunnel, guardrails, water, sky, clouds, rain and conifer trees: generated in code.
-- All audio (engine, tyres, wind, impacts, UI, birdsong, crickets, rain): synthesised live with the Web Audio API. No samples are shipped.
+- Terrain, roads, bridges, tunnel, guardrails, water, sky, clouds and rain: generated in code.
+- UI tones, gear-shift clicks and a quiet engine sub-bass layer are synthesised with the Web Audio API.
 - Interface, icons and typography: CSS and system fonts.
 
 ## Libraries

@@ -41,7 +41,7 @@ export class Assets {
     await Promise.all([
       ...T.map(t => this.loadTex(t[0], t[1], t[2])),
       ...M.map(m => this.loadModel(m, 'models/' + m + '.glb')),
-      this.loadModel('concept', 'cars/concept.glb'), this.loadModel('car_coupe', 'cars/coupe.glb'),
+      this.loadModel('concept', 'cars/concept.glb'), this.loadModel('car_coupe', 'cars/coupe.glb'), this.loadModel('car_gt', 'cars/gt.glb'), this.loadModel('car_suv', 'cars/suv.glb'),
       new Promise<void>(res => this.rgbe.load(BASE + 'hdri/sky_1k.hdr', t => { t.mapping = THREE.EquirectangularReflectionMapping; this.hdr = t; res(); }, undefined, () => { this.errors.push('hdri'); res(); })),
     ]);
   }

@@ -4,6 +4,7 @@ An open-world driving game that runs in a desktop browser. One connected map wit
 
 **Play:** https://aimerscrypto.github.io/horizon-open-roads/
 
+![Forest](docs/screenshots/07-forest-coupe.jpg)
 ![Desert](docs/screenshots/01-desert-coupe.jpg)
 ![Forest in the rain](docs/screenshots/04-forest-rain-suv.jpg)
 ![Mountain](docs/screenshots/02-mountain-hairpins-gt.jpg)
@@ -18,7 +19,7 @@ More in [docs/screenshots](docs/screenshots).
 | `W` `A` `S` `D` or arrow keys | Accelerate, steer, brake. Hold brake at a standstill to reverse |
 | `Space` | Handbrake |
 | `Shift` | Boost (recharges on its own) |
-| `C` | Camera: chase, far chase, hood, cockpit (cockpit on the Vanta R only) |
+| `C` | Camera: chase, far chase, hood, cockpit |
 | `R` | Reset the car onto the nearest road, or to the last checkpoint during an event |
 | `Enter` | Start the event at a start gate |
 | `M` | Events and map, with fast travel |
@@ -72,6 +73,8 @@ The optimised assets are committed under `public/assets`, so the two asset scrip
 ```bash
 npm run assets:fetch   # downloads the source files into assets-src/ (about 100 MB)
 npm run assets:prep    # simplifies meshes, converts textures to WebP, writes public/assets/
+node scripts/prep-cars.mjs       # rebuilds the three Sketchfab cars from assets-src/cars/dl (download needs a Sketchfab account)
+python scripts/prep-audio.py     # downloads and cuts the CC0 recordings (needs ffmpeg)
 ```
 
 ### Deploying
@@ -109,16 +112,16 @@ The visual car models are separate from the physics model: each car is a rigid b
 
 See [ASSETS.md](ASSETS.md) for the full inventory.
 
-- Concept car model: "Car Concept" by the Khronos Group (CC BY 4.0), based on a CC0 model by Unity Fan. Khronos logos removed.
-- Rocks, plants, props, ground textures and the reflection HDRI: Poly Haven (CC0).
-- All audio is synthesised at runtime.
+- Vanta R: "Car Concept" by the Khronos Group (CC BY 4.0), based on a CC0 model by Unity Fan. Khronos logos removed.
+- Kestrel S, Aurelia GT and Bastion X: concept cars 040, 002-02 and 006 by Unity Fan, released by the author as public domain.
+- Rocks, plants, props, ground textures, the fir tree scan and the reflection HDRI: Poly Haven (CC0).
+- Engine, tyre, wind, rain, bird, cricket and crash recordings: OpenGameArt and Freesound, all CC0.
 
 ## Known limitations
 
-- **Three of the four cars are generated in code.** Only the Vanta R is a downloaded model. I could not source three more licence-clean realistic car models without a Sketchfab account, so the coupe, GT and SUV are original lofted bodies. They are plainer than the Vanta R and have no interior, so they have no cockpit camera.
-- **Trees are procedural.** The Poly Haven tree scans were too heavy for a browser, so the conifers are simple generated firs with a baked impostor at distance.
-- **The look is stylised-realistic rather than photoreal.** The target hardware includes integrated graphics, which ruled out heavier materials and geometry.
-- **Audio is synthesised.** The engine note responds to RPM, throttle and gear changes but does not sound like a recorded engine.
+- **The look is realistic-leaning, not photoreal.** It has to run on integrated graphics, which rules out heavier materials, dense geometry and full-scene reflections.
+- **Trees are billboards** baked from a photoscanned fir. They read well at driving speed but are flat up close.
+- **The engine note is built from four short recorded loops** pitched by RPM, so all four cars share one engine character at different pitches.
 - **Event star targets were set from AI lap times** and have not been tuned by human play.
 - Desktop only. There are no touch controls.
 - Crossing the river bed is possible but water has no effect on the car.

@@ -38,7 +38,7 @@ export const CARS: CarSpec[] = [
     suspRest: 0.3, suspTravel: 0.16, springHz: 2.1, damping: 0.62, antiRoll: 9000,
     drag: 0.46, downforce: 0.9,
     stats: { speed: 6.4, accel: 6.6, handling: 7.4, offroad: 3.0 }, topKmh: 262,
-    audio: { cylinders: 6, pitch: 1.0, rasp: 0.5, bass: 0.5 }, cockpit: false,
+    audio: { cylinders: 6, pitch: 1.0, rasp: 0.5, bass: 0.5 }, cockpit: true,
   },
   {
     id: 'gt', name: 'Aurelia GT', klass: 'Grand Tourer', tagline: 'Twelve cylinders and a continent to cross.', price: 30000,
@@ -51,7 +51,7 @@ export const CARS: CarSpec[] = [
     suspRest: 0.31, suspTravel: 0.17, springHz: 1.9, damping: 0.66, antiRoll: 11000,
     drag: 0.44, downforce: 1.0,
     stats: { speed: 8.0, accel: 7.2, handling: 6.4, offroad: 3.2 }, topKmh: 308,
-    audio: { cylinders: 12, pitch: 0.92, rasp: 0.3, bass: 0.7 }, cockpit: false,
+    audio: { cylinders: 12, pitch: 0.92, rasp: 0.3, bass: 0.7 }, cockpit: true,
   },
   {
     id: 'suv', name: 'Bastion X', klass: 'Off-Road SUV', tagline: 'Long-travel suspension. The road is optional.', price: 45000,
@@ -64,7 +64,7 @@ export const CARS: CarSpec[] = [
     suspRest: 0.46, suspTravel: 0.3, springHz: 1.55, damping: 0.6, antiRoll: 12000,
     drag: 0.72, downforce: 0.3,
     stats: { speed: 5.2, accel: 5.8, handling: 4.8, offroad: 9.6 }, topKmh: 226,
-    audio: { cylinders: 8, pitch: 0.78, rasp: 0.25, bass: 1.0 }, cockpit: false,
+    audio: { cylinders: 8, pitch: 0.78, rasp: 0.25, bass: 1.0 }, cockpit: true,
   },
   {
     id: 'hyper', name: 'Vanta R', klass: 'Exotic Supercar', tagline: 'All-wheel drive, active aero, zero compromise.', price: 90000,
