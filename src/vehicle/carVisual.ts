@@ -14,7 +14,7 @@ export class CarVisual {
   private restY: number[] = [];
   private brakeMats: THREE.MeshStandardMaterial[] = []; private headMats: THREE.MeshStandardMaterial[] = []; private revMats: THREE.MeshStandardMaterial[] = [];
   private steeringWheel: THREE.Object3D | null = null; private steerBase = new THREE.Quaternion();
-  readonly headLight = new THREE.SpotLight(0xdfe9ff, 0, 130, 0.5, 0.6, 1.4);
+  readonly headLight = new THREE.SpotLight(0xe6eeff, 0, 260, 0.52, 0.55, 1.0);
   /** camera anchor points in car frame */
   readonly hoodCam = new THREE.Vector3(); readonly cockpitCam = new THREE.Vector3();
   paint: THREE.Material[] = [];
@@ -80,7 +80,7 @@ export class CarVisual {
       this.headLight.position.set(0, body.headPos.y - s.cgHeight, body.headPos.z - 0.2);
     }
     this.group.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) { m.castShadow = true; } });
-    this.headLight.target.position.set(0, this.headLight.position.y - 0.7, this.headLight.position.z - 30);
+    this.headLight.target.position.set(0, this.headLight.position.y - 1.6, this.headLight.position.z - 60);
     this.group.add(this.headLight, this.headLight.target);
   }
 
@@ -177,7 +177,7 @@ export class CarVisual {
     for (const m of this.brakeMats) m.emissiveIntensity = brakeOn ? 5.5 : 0.35 + headOn * 0.6;
     for (const m of this.headMats) m.emissiveIntensity = 0.5 + headOn * 5;
     for (const m of this.revMats) m.emissiveIntensity = rev ? 4 : 0;
-    this.headLight.intensity = headOn * 900;
+    this.headLight.intensity = headOn * 520;
     if (this.steeringWheel) this.steeringWheel.quaternion.copy(this.steerBase).multiply(_q.setFromAxisAngle(_ax, car.steerNorm * 1.6));
   }
   dispose() { this.group.removeFromParent(); }

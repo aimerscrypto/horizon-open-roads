@@ -5,6 +5,7 @@ export interface ActivityRecord { best: number; stars: number; runs: number; }
 export interface SaveData { v: 1; credits: number; xp: number; car: string; owned: string[]; activities: Record<string, ActivityRecord>; settings: Settings; distance: number; camMode: number; seenIntro: boolean; }
 
 const KEY = 'horizon-open-roads-v1';
+const ALL_CARS = ['coupe', 'gt', 'suv', 'hyper'];
 /** First-run default: integrated GPUs start on Low, everything else on Medium. */
 function detectQuality(): Quality {
   try {
@@ -18,7 +19,7 @@ function detectQuality(): Quality {
   return 'medium';
 }
 const defaults = (): SaveData => ({
-  v: 1, credits: 5000, xp: 0, car: 'coupe', owned: ['coupe'], activities: {}, distance: 0, camMode: 0, seenIntro: false,
+  v: 1, credits: 5000, xp: 0, car: 'coupe', owned: [...ALL_CARS], activities: {}, distance: 0, camMode: 0, seenIntro: false,
   settings: { quality: 'medium', master: 0.8, engine: 0.8, ambience: 0.6, units: 'kmh', weather: 'dynamic', timeFlow: 'cycle', camShake: true },
 });
 export class Save {
@@ -30,7 +31,8 @@ export class Save {
       const raw = localStorage.getItem(KEY);
       if (raw) { const p = JSON.parse(raw); Object.assign(d, p); d.settings = Object.assign(defaults().settings, p.settings || {}); } else this.isNew = true;
     } catch { this.isNew = true; }
-    if (!d.owned.includes('coupe')) d.owned.push('coupe');
+    // Every car is free: make sure all of them are in the garage, including on older saves.
+    for (const id of ALL_CARS) if (!d.owned.includes(id)) d.owned.push(id);
     if (this.isNew) d.settings.quality = detectQuality();
     this.data = d;
   }

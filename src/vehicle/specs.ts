@@ -41,7 +41,7 @@ export const CARS: CarSpec[] = [
     audio: { cylinders: 6, pitch: 1.0, rasp: 0.5, bass: 0.5 }, cockpit: true,
   },
   {
-    id: 'gt', name: 'Aurelia GT', klass: 'Grand Tourer', tagline: 'Twelve cylinders and a continent to cross.', price: 30000,
+    id: 'gt', name: 'Aurelia GT', klass: 'Grand Tourer', tagline: 'Twelve cylinders and a continent to cross.', price: 0,
     model: 'proc', scan: { scale: 0.9, paint: ['silver'], glass: [] }, body: { kind: 'gt', length: 4.78, width: 1.94, height: 1.31, ride: 0.14, paint: 0x0e2a4a },
     mass: 1790, wheelbase: 2.82, track: 1.64, cgHeight: 0.5, wheelRadius: 0.35, wheelWidth: 0.28,
     drive: 'rwd', rearBias: 1,
@@ -54,7 +54,7 @@ export const CARS: CarSpec[] = [
     audio: { cylinders: 12, pitch: 0.92, rasp: 0.3, bass: 0.7 }, cockpit: true,
   },
   {
-    id: 'suv', name: 'Bastion X', klass: 'Off-Road SUV', tagline: 'Long-travel suspension. The road is optional.', price: 45000,
+    id: 'suv', name: 'Bastion X', klass: 'Off-Road SUV', tagline: 'Long-travel suspension. The road is optional.', price: 0,
     model: 'proc', scan: { scale: 1.0, paint: ['body'], glass: [] }, body: { kind: 'suv', length: 4.72, width: 1.98, height: 1.82, ride: 0.3, paint: 0x4d5a3a },
     mass: 2150, wheelbase: 2.86, track: 1.68, cgHeight: 0.66, wheelRadius: 0.43, wheelWidth: 0.31,
     drive: 'awd', rearBias: 0.55,
@@ -67,7 +67,7 @@ export const CARS: CarSpec[] = [
     audio: { cylinders: 8, pitch: 0.78, rasp: 0.25, bass: 1.0 }, cockpit: true,
   },
   {
-    id: 'hyper', name: 'Vanta R', klass: 'Exotic Supercar', tagline: 'All-wheel drive, active aero, zero compromise.', price: 90000,
+    id: 'hyper', name: 'Vanta R', klass: 'Exotic Supercar', tagline: 'All-wheel drive, active aero, zero compromise.', price: 0,
     model: 'glb', body: { kind: 'supercar', length: 4.35, width: 2.02, height: 1.12, ride: 0.11, paint: 0xf2b705 },
     mass: 1490, wheelbase: 2.52, track: 1.76, cgHeight: 0.4, wheelRadius: 0.346, wheelWidth: 0.3,
     drive: 'awd', rearBias: 0.68,

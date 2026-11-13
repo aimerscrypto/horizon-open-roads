@@ -35,12 +35,14 @@ A gamepad also works: left stick, triggers, A for handbrake, X for boost.
   - Mountain: a climb through switchbacks to a 300 m summit tunnel, then a fast descent.
   - Forest: a winding road under pines with two river bridges; the dirt road adds a timber bridge.
 - **Cars.**
-  | Car | Class | Drive | Unlock |
-  | --- | --- | --- | --- |
-  | Kestrel S | Sports coupe | RWD | Starter |
-  | Aurelia GT | Grand tourer | RWD | 30,000 CR |
-  | Bastion X | Off-road SUV | AWD | 45,000 CR |
-  | Vanta R | Exotic supercar | AWD | 90,000 CR |
+  | Car | Class | Drive |
+  | --- | --- | --- |
+  | Kestrel S | Sports coupe | RWD |
+  | Aurelia GT | Grand tourer | RWD |
+  | Bastion X | Off-road SUV | AWD |
+  | Vanta R | Exotic supercar | AWD |
+
+  All four cars are free and in the garage from the start.
 - **Events.** Three road races, two time trials, three speed traps and three drift zones, spread over the three biomes. Each awards up to three stars, credits and XP. Speed traps and drift zones trigger as you drive through them; races and trials start at the glowing gates.
 - **Day/night and weather.** A 24-minute day cycle and passing rain showers. Rain wets the tarmac, adds puddle reflections and cuts grip by about a fifth. Both can be fixed in Settings.
 - **Saving.** Selected car, owned cars, paint, best results, stars, credits, XP and settings are kept in the browser's local storage.
@@ -115,13 +117,14 @@ See [ASSETS.md](ASSETS.md) for the full inventory.
 - Vanta R: "Car Concept" by the Khronos Group (CC BY 4.0), based on a CC0 model by Unity Fan. Khronos logos removed.
 - Kestrel S, Aurelia GT and Bastion X: concept cars 040, 002-02 and 006 by Unity Fan, released by the author as public domain.
 - Rocks, plants, props, ground textures, the fir tree scan and the reflection HDRI: Poly Haven (CC0).
-- Engine, tyre, wind, rain, bird, cricket and crash recordings: OpenGameArt and Freesound, all CC0.
+- Engine: "The Dyno Sessions: 190E" by Chippy569 on Freesound (CC0), dyno recordings under load and coasting.
+- Tyre, wind, rain, bird, cricket and crash recordings: Freesound, all CC0.
 
 ## Known limitations
 
 - **The look is realistic-leaning, not photoreal.** It has to run on integrated graphics, which rules out heavier materials, dense geometry and full-scene reflections.
 - **Trees are billboards** baked from a photoscanned fir. They read well at driving speed but are flat up close.
-- **The engine note is built from four short recorded loops** pitched by RPM, so all four cars share one engine character at different pitches.
+- **All four cars use the same recorded engine** (a four-cylinder on a dyno), pitched to each car's RPM range. Throttle blends between full-load and coasting recordings, but there is no separate V8, V10 or V12 recording.
 - **Event star targets were set from AI lap times** and have not been tuned by human play.
 - Desktop only. There are no touch controls.
 - Crossing the river bed is possible but water has no effect on the car.

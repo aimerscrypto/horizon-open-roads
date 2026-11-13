@@ -6,8 +6,8 @@ import { clamp, damp, lerp, mulberry32, smoothstep } from '../core/noise';
 export type WeatherMode = 'dynamic' | 'clear' | 'rain';
 const C = (r: number, g: number, b: number) => new THREE.Color(r, g, b);
 // linear-space palette
-const ZEN_DAY = C(0.08, 0.24, 0.7), ZEN_DUSK = C(0.1, 0.13, 0.36), ZEN_NIGHT = C(0.003, 0.006, 0.018);
-const HOR_DAY = C(0.62, 0.76, 0.93), HOR_DUSK = C(1.0, 0.46, 0.17), HOR_NIGHT = C(0.012, 0.018, 0.04), HOR_RAIN = C(0.34, 0.38, 0.43);
+const ZEN_DAY = C(0.08, 0.24, 0.7), ZEN_DUSK = C(0.1, 0.13, 0.36), ZEN_NIGHT = C(0.012, 0.02, 0.055);
+const HOR_DAY = C(0.62, 0.76, 0.93), HOR_DUSK = C(1.0, 0.46, 0.17), HOR_NIGHT = C(0.04, 0.055, 0.1), HOR_RAIN = C(0.34, 0.38, 0.43);
 const SUN_LOW = C(1.0, 0.42, 0.12), SUN_HIGH = C(1.0, 0.93, 0.8), MOON = C(0.45, 0.6, 1.0);
 
 export class Environment {
@@ -136,7 +136,7 @@ export class Environment {
       this.sun.intensity = 4.4 * smoothstep(-0.04, 0.16, sy) * (1 - over * 0.8);
     } else {
       this.lightDir.set(-0.45, 0.72, 0.4).normalize();
-      this.sun.color.copy(MOON); this.sun.intensity = 0.5 * smoothstep(-0.04, -0.16, sy) * (1 - over * 0.5);
+      this.sun.color.copy(MOON); this.sun.intensity = 1.3 * smoothstep(-0.04, -0.16, sy) * (1 - over * 0.5);
     }
     sunCol.copy(SUN_LOW).lerp(SUN_HIGH, smoothstep(0.02, 0.42, sy)).multiplyScalar(smoothstep(-0.12, 0.05, sy) * (1 - over * 0.9));
     this.zen.copy(ZEN_NIGHT).lerp(ZEN_DAY, day).lerp(ZEN_DUSK, low * 0.75).lerp(HOR_RAIN.clone().multiplyScalar(lerp(0.05, 0.75, day)), over * 0.9);
@@ -145,13 +145,13 @@ export class Environment {
     this.skyU.uCloudLit.value.setRGB(lerp(0.03, 1.0, day), lerp(0.035, 0.98, day), lerp(0.05, 0.95, day)).lerp(HOR_DUSK, low * 0.5).multiplyScalar(1 - over * 0.45);
     this.skyU.uCloudShade.value.setRGB(lerp(0.012, 0.42, day), lerp(0.014, 0.46, day), lerp(0.02, 0.54, day)).multiplyScalar(1 - over * 0.4);
     this.skyU.uTime.value += dt; this.skyU.uCover.value = lerp(0.47, 0.98, over);
-    this.hemi.color.copy(this.zen).lerp(this.hor, 0.6).multiplyScalar(1.25); this.hemi.color.r = Math.max(this.hemi.color.r, 0.07); this.hemi.color.g = Math.max(this.hemi.color.g, 0.09); this.hemi.color.b = Math.max(this.hemi.color.b, 0.16);
-    this.hemi.groundColor.setRGB(lerp(0.03, 0.42, day), lerp(0.03, 0.36, day), lerp(0.05, 0.29, day));
-    this.hemi.intensity = lerp(0.9, 1.5, day) * (1 - over * 0.2);
+    this.hemi.color.copy(this.zen).lerp(this.hor, 0.6).multiplyScalar(1.25); this.hemi.color.r = Math.max(this.hemi.color.r, 0.13); this.hemi.color.g = Math.max(this.hemi.color.g, 0.16); this.hemi.color.b = Math.max(this.hemi.color.b, 0.26);
+    this.hemi.groundColor.setRGB(lerp(0.07, 0.42, day), lerp(0.07, 0.36, day), lerp(0.1, 0.29, day));
+    this.hemi.intensity = lerp(1.2, 1.6, day) * (1 - over * 0.2);
     this.envScale = lerp(0.07, 0.95, day) * (1 - over * 0.35);
     this.fog.color.copy(this.hor);
-    this.fog.density = lerp(0.00031, 0.0011, over) + low * 0.00012;
-    this.exposure = lerp(1.0, 0.62, day) * (1 + over * 0.1);
+    this.fog.density = lerp(0.0002, 0.00065, over) + low * 0.00008;
+    this.exposure = lerp(1.45, 0.7, day) * (1 + over * 0.15);
     this.renderer.toneMappingExposure = this.exposure;
     (this.stars.material as THREE.PointsMaterial).opacity = (1 - day) * (1 - over);
     this.stars.position.copy(cam.position); this.sky.position.copy(cam.position);

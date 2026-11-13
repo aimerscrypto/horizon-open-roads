@@ -84,7 +84,7 @@ Cut, looped and normalised by `scripts/prep-audio.py`. Files are under `public/a
 
 | File | Source |
 | --- | --- |
-| `engine_0/1/3/5.wav` | "Racing car engine sound loops" by domasx2, https://opengameart.org/content/racing-car-engine-sound-loops |
+| `eng_off_idle/mid/high.wav`, `eng_on_mid/high.wav` | "The Dyno Sessions: 190E" by Chippy569, Freesound pack 9658 (https://freesound.org/people/Chippy569/packs/9658/). Dyno recordings of a Mercedes 190E-16V held at idle, ~2500 and ~6300 rpm, under full load and with no load. Sounds 162509/162510, 162512/162513, 162515/162516, 162518/162519 and 162521/162522; each loop mixes the exhaust and engine-bay microphones |
 | `skid.wav` | Freesound 71736 "Chrysler LHS tire squeal 01" |
 | `gravel.wav` | Freesound 251662 "Tires on Gravel Road 2" |
 | `wind.wav` | Freesound 444921 "Wind through trees (loop)" |

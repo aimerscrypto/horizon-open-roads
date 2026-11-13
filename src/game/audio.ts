@@ -16,20 +16,21 @@ export class GameAudio {
   private spec: CarSpec | null = null; private birdT = 2; private popT = 0; private lastThrottle = 0;
   vol = { master: 0.8, engine: 0.8, ambience: 0.6 };
   private buf: Record<string, AudioBuffer> = {}; private sampled = false;
-  private eng: { src: AudioBufferSourceNode; gain: GainNode; hz: number }[] = []; private engBus!: GainNode; private engLP!: BiquadFilterNode;
+  private eng: Record<string, { src: AudioBufferSourceNode; gain: GainNode; rpm: number }> = {}; private engBus!: GainNode; private engLP!: BiquadFilterNode;
   private loops: Record<string, { src: AudioBufferSourceNode; gain: GainNode }> = {};
   private wasBoost = false;
 
   private async loadSamples() {
     const ctx = this.ctx!, base = import.meta.env.BASE_URL + 'assets/audio/';
-    const names = ['engine_0.wav', 'engine_1.wav', 'engine_3.wav', 'engine_5.wav', 'skid.wav', 'gravel.wav', 'wind.wav', 'rain.mp3', 'birds.mp3', 'crickets.mp3', 'crash_big.mp3', 'crash_metal.mp3', 'crash_light.mp3', 'turbo.mp3'];
+    const ENG = [['eng_off_idle', 1008], ['eng_off_mid', 2433], ['eng_off_high', 6300], ['eng_on_mid', 2556], ['eng_on_high', 6210]] as const;
+    const names = [...ENG.map(e => e[0] + '.wav'), 'skid.wav', 'gravel.wav', 'wind.wav', 'rain.mp3', 'birds.mp3', 'crickets.mp3', 'crash_big.mp3', 'crash_metal.mp3', 'crash_light.mp3', 'turbo.mp3'];
     await Promise.all(names.map(async n => { try { const r = await fetch(base + n); this.buf[n.split('.')[0]] = await ctx.decodeAudioData(await r.arrayBuffer()); } catch { /* keep the synth fallback */ } }));
     const mk = (name: string, dest: AudioNode) => { const src = ctx.createBufferSource(); src.buffer = this.buf[name]; src.loop = true; const gain = ctx.createGain(); gain.gain.value = 0; src.connect(gain); gain.connect(dest); src.start(0, Math.random() * (src.buffer?.duration ?? 0)); return { src, gain }; };
-    if (this.buf.engine_0 && this.buf.engine_1 && this.buf.engine_3 && this.buf.engine_5) {
+    if (ENG.every(e => this.buf[e[0]])) {
       this.engLP = ctx.createBiquadFilter(); this.engLP.type = 'lowpass'; this.engLP.frequency.value = 4000; this.engLP.Q.value = 0.6;
       this.engBus = ctx.createGain(); this.engBus.gain.value = 0; this.engLP.connect(this.engBus); this.engBus.connect(this.sfx);
-      // measured fundamentals of the four recordings (Hz)
-      for (const [n, hz] of [['engine_0', 21.6], ['engine_1', 60], ['engine_3', 69.8], ['engine_5', 76.6]] as const) { const l = mk(n, this.engLP); this.eng.push({ ...l, hz }); }
+      // dyno recordings of one engine at steady rpm, under full load (on) and coasting (off); rpm measured from the firing frequency
+      for (const [n, rpm] of ENG) this.eng[n.slice(4)] = { ...mk(n, this.engLP), rpm };
       this.sampled = true;
     }
     for (const [n, dest] of [['skid', this.sfx], ['gravel', this.sfx], ['wind', this.sfx], ['rain', this.amb], ['birds', this.amb], ['crickets', this.amb]] as const) if (this.buf[n]) this.loops[n] = mk(n, dest);
@@ -130,18 +131,19 @@ export class GameAudio {
     set(this.oscGain[0].gain, 0.3 * s.bass + 0.1); set(this.oscGain[1].gain, 0.3); set(this.oscGain[2].gain, 0.05 + 0.14 * s.rasp * (0.4 + thr)); set(this.oscGain[3].gain, 0.08 + 0.2 * x * s.rasp);
     set(this.engFilter.frequency, (300 + x * 2600 + thr * 2400 * (0.5 + x)) * (1 - env.tunnel * 0.15), 0.05);
     if (this.sampled) {
-      // recorded layers: idle, low, mid, high, cross-faded by rpm and pitched to follow it
-      const target = (34 + x * 118) * s.pitch; // Hz of the layer fundamental we want to hear
-      const w = [1 - clamp((x - 0.14) / 0.14, 0, 1), clamp((x - 0.12) / 0.14, 0, 1) * (1 - clamp((x - 0.42) / 0.2, 0, 1)), clamp((x - 0.4) / 0.2, 0, 1) * (1 - clamp((x - 0.72) / 0.18, 0, 1)), clamp((x - 0.7) / 0.18, 0, 1)];
-      for (let i = 0; i < 4; i++) {
-        const e = this.eng[i];
-        set(e.src.playbackRate, clamp(i === 0 ? 0.9 + x * 3.2 : target / e.hz, 0.4, 3.2), 0.03);
-        set(e.gain.gain, w[i] * (i === 0 ? 0.55 : 0.8), 0.04);
-      }
-      set(this.engLP.frequency, (900 + x * 3200 + thr * 5200) * (1 - env.tunnel * 0.2), 0.06);
-      set(this.engBus.gain, (0.34 + 0.5 * thr + 0.16 * x) * (1 + env.tunnel * 0.45), 0.05);
+      // Recorded layers. Each one plays at (engine rpm / rpm it was recorded at), so the pitch is the real firing frequency.
+      // Equal-power cross-fades by rpm (idle -> mid -> high), and by load: throttle brings in the full-load set,
+      // lifting off leaves the quieter coasting set.
+      const r = rpm * s.pitch, E = this.eng;
+      const ep = (a: number, b: number) => { const k = clamp((r - a) / (b - a), 0, 1) * Math.PI / 2; return [Math.cos(k), Math.sin(k)]; };
+      const [idle, above] = ep(1150, 2150), [lo, hi] = ep(3000, 4900);
+      const on = Math.sqrt(thr), off = Math.sqrt(1 - thr) * 0.62;
+      const w: Record<string, number> = { off_idle: idle * (0.75 + 0.35 * thr), off_mid: above * lo * off, on_mid: above * lo * on, off_high: above * hi * off, on_high: above * hi * on };
+      for (const k in E) { set(E[k].src.playbackRate, clamp(r / E[k].rpm, 0.35, 2.3), 0.03); set(E[k].gain.gain, w[k] ?? 0, 0.05); }
+      set(this.engLP.frequency, (1400 + x * 3600 + thr * 5000) * (1 - env.tunnel * 0.2), 0.06);
+      set(this.engBus.gain, (0.42 + 0.3 * thr + 0.14 * x) * (1 + env.tunnel * 0.45), 0.05);
       // synth layer stays as a quiet sub-bass body under the recording
-      set(this.engGain.gain, (0.03 + 0.05 * thr) * s.bass, 0.05);
+      set(this.engGain.gain, (0.02 + 0.035 * thr) * s.bass, 0.05);
     } else set(this.engGain.gain, (0.11 + 0.2 * thr + 0.12 * x) * (1 + env.tunnel * 0.5), 0.05);
     set(this.intakeGain.gain, thr * x * 0.11); set(this.intakeFilter.frequency, 500 + x * 1700);
     // overrun pops when lifting at high rpm

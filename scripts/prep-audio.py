@@ -53,3 +53,24 @@ p = get(FS + '321/321482_5485024-hq.mp3', 'crash2.mp3');   shot(p, 'crash_metal.
 p = get(FS + '340/340539_4959511-hq.mp3', 'crash3.mp3');   shot(p, 'crash_light.mp3', onset(p), 0.4)
 p = get(FS + '659/659544_13241413-hq.mp3', 'turbo.mp3');   shot(p, 'turbo.mp3', 0, 5.2)
 print('audio ready')
+
+# engine v2: "The Dyno Sessions: 190E" by Chippy569 (Freesound, CC0). Steady dyno loops of a Mercedes 190E-16V,
+# full load and zero load, at idle / ~2500 / ~6300 rpm. Each layer mixes the exhaust mic (Audix D6) with the
+# engine-bay mic (DPA 4062), recorded simultaneously, then becomes a seamless loop.
+DY = 'https://cdn.freesound.org/previews/162/{}_1277206-hq.mp3'
+def dyno(name, exhaust, bay, start, length, bay_mix=0.45, xf=0.22):
+    a, b = get(DY.format(exhaust), f'dyno_{exhaust}.mp3'), get(DY.format(bay), f'dyno_{bay}.mp3')
+    f = (f"[0]loudnorm=I=-20:TP=-3[a];[1]loudnorm=I=-20:TP=-3,volume={bay_mix}[b];[a][b]amix=inputs=2:normalize=0,"
+         f"highpass=f=22,atrim={start}:{start + length},asetpts=N/SR/TB,aresample=32000,asplit[x][y];[x]atrim=0:{xf},asetpts=N/SR/TB[head];"
+         f"[y]atrim={xf},asetpts=N/SR/TB[body];[body][head]acrossfade=d={xf}:c1=qsin:c2=qsin")
+    out = os.path.join(OUT, name); ff(['-i', a, '-i', b, '-filter_complex', f, '-ac', '1', '-ar', '32000', '-c:a', 'pcm_s16le', out])
+    # same RMS for every layer (relative levels are set in the game), peaks kept under full scale
+    w = wave.open(out); fr = w.getframerate(); x = array.array('h'); x.frombytes(w.readframes(w.getnframes())); w.close()
+    rms = math.sqrt(sum(v * v for v in x) / len(x)); g = min(5200 / rms, 31000 / max(abs(v) for v in x))
+    x = array.array('h', (int(v * g) for v in x)); w = wave.open(out, 'wb'); w.setnchannels(1); w.setsampwidth(2); w.setframerate(fr); w.writeframes(x.tobytes()); w.close()
+dyno('eng_off_idle.wav', 162515, 162516, 1.0, 3.2)   # ~1000 rpm
+dyno('eng_off_mid.wav',  162518, 162519, 0.3, 3.2)   # ~2430 rpm
+dyno('eng_off_high.wav', 162521, 162522, 0.1, 1.65)  # ~6300 rpm
+dyno('eng_on_mid.wav',   162509, 162510, 0.4, 3.6)   # ~2560 rpm
+dyno('eng_on_high.wav',  162512, 162513, 0.08, 1.45) # ~6210 rpm
+print('dyno engine ready')
