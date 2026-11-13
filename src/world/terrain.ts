@@ -227,22 +227,26 @@ export class Terrain {
           vec2 ruv = wn.y > 0.5 ? vWPos.xz : (abs(wn.x) > abs(wn.z) ? vWPos.zy : vWPos.xy);
           vec3 rock = texture2D(tRock, ruv / 13.0).rgb;
           vec3 grey = vec3(dot(rock, vec3(0.4, 0.4, 0.3)));
+          // break up slope-driven bands with low-frequency noise so rock/grass edges are irregular
+          slope += (macroS.r - 0.33) * 0.22 + (rock.g - 0.3) * 0.12;
           vec3 terr = vec3(0.0);
           float snow = 0.0;
           if (bD > 0.02) {
             vec3 sand = texture2D(tSand, vWPos.xz / 9.0).rgb;
             float strata = 0.86 + 0.2 * sin(vWPos.y * 0.21 + macroS.r * 9.0) * sin(vWPos.y * 0.067 + 1.7);
-            terr += bD * mix(sand * vec3(1.9, 1.5, 1.22) + vec3(0.05, 0.035, 0.02), rock * vec3(2.0, 1.12, 0.72) * strata, smoothstep(0.16, 0.36, slope));
+            terr += bD * mix(sand * vec3(1.9, 1.5, 1.22) + vec3(0.05, 0.035, 0.02), rock * vec3(2.0, 1.12, 0.72) * strata, smoothstep(0.16, 0.42, slope));
           }
           if (bM > 0.02) {
             vec3 grass = texture2D(tGrass, vWPos.xz / 15.0).rgb;
             snow = smoothstep(uSnowLine - 40.0, uSnowLine + 50.0, vWPos.y + macroS.g * 120.0) * smoothstep(0.62, 0.3, slope);
-            vec3 cM = mix(grass * vec3(0.72, 0.98, 0.5), grey * vec3(1.0, 1.02, 1.08), smoothstep(0.2, 0.42, slope));
+            vec3 cM = mix(grass * mix(vec3(0.62, 0.9, 0.42), vec3(0.95, 0.92, 0.55), macroS.g), grey * vec3(1.0, 1.02, 1.08), smoothstep(0.2, 0.52, slope));
             terr += bM * mix(cM, vec3(0.86, 0.89, 0.94), snow);
           }
           if (bF > 0.02) {
             vec3 forest = texture2D(tForest, vWPos.xz / 7.0).rgb;
-            terr += bF * mix(forest * mix(vec3(0.95, 1.0, 0.8), vec3(0.55, 0.95, 0.42), clamp(0.9 * macroS.b + 0.25, 0.0, 1.0)), grey * vec3(0.74, 0.76, 0.72), smoothstep(0.3, 0.55, slope));
+            vec3 moss = texture2D(tGrass, vWPos.xz / 11.0).rgb * vec3(0.5, 0.86, 0.34);
+            float patchy = smoothstep(0.08, 0.3, macroS.b * 0.8 + forest.g * 0.9);
+            terr += bF * mix(mix(forest * vec3(0.9, 0.95, 0.75), moss, patchy * 0.8), grey * vec3(0.74, 0.76, 0.72), smoothstep(0.32, 0.6, slope));
           }
           terr *= macro;
           terr = mix(terr, mix(vec3(0.33, 0.3, 0.27), terr, 0.45), vBiome.w * 0.75);

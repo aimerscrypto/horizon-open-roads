@@ -6,8 +6,8 @@ import { clamp, damp, lerp, mulberry32, smoothstep } from '../core/noise';
 export type WeatherMode = 'dynamic' | 'clear' | 'rain';
 const C = (r: number, g: number, b: number) => new THREE.Color(r, g, b);
 // linear-space palette
-const ZEN_DAY = C(0.1, 0.27, 0.72), ZEN_DUSK = C(0.1, 0.13, 0.36), ZEN_NIGHT = C(0.003, 0.006, 0.018);
-const HOR_DAY = C(0.56, 0.72, 0.92), HOR_DUSK = C(1.0, 0.46, 0.17), HOR_NIGHT = C(0.012, 0.018, 0.04), HOR_RAIN = C(0.34, 0.38, 0.43);
+const ZEN_DAY = C(0.08, 0.24, 0.7), ZEN_DUSK = C(0.1, 0.13, 0.36), ZEN_NIGHT = C(0.003, 0.006, 0.018);
+const HOR_DAY = C(0.62, 0.76, 0.93), HOR_DUSK = C(1.0, 0.46, 0.17), HOR_NIGHT = C(0.012, 0.018, 0.04), HOR_RAIN = C(0.34, 0.38, 0.43);
 const SUN_LOW = C(1.0, 0.42, 0.12), SUN_HIGH = C(1.0, 0.93, 0.8), MOON = C(0.45, 0.6, 1.0);
 
 export class Environment {
@@ -133,7 +133,7 @@ export class Environment {
     if (sy > -0.04) {
       this.lightDir.copy(this.sunDir); if (this.lightDir.y < 0.06) { this.lightDir.y = 0.06; this.lightDir.normalize(); }
       this.sun.color.copy(SUN_LOW).lerp(SUN_HIGH, smoothstep(0.02, 0.42, sy));
-      this.sun.intensity = 3.9 * smoothstep(-0.04, 0.16, sy) * (1 - over * 0.8);
+      this.sun.intensity = 4.4 * smoothstep(-0.04, 0.16, sy) * (1 - over * 0.8);
     } else {
       this.lightDir.set(-0.45, 0.72, 0.4).normalize();
       this.sun.color.copy(MOON); this.sun.intensity = 0.5 * smoothstep(-0.04, -0.16, sy) * (1 - over * 0.5);
@@ -150,7 +150,7 @@ export class Environment {
     this.hemi.intensity = lerp(0.9, 1.5, day) * (1 - over * 0.2);
     this.envScale = lerp(0.07, 0.95, day) * (1 - over * 0.35);
     this.fog.color.copy(this.hor);
-    this.fog.density = lerp(0.0002, 0.0011, over) + low * 0.00005;
+    this.fog.density = lerp(0.00031, 0.0011, over) + low * 0.00012;
     this.exposure = lerp(1.0, 0.62, day) * (1 + over * 0.1);
     this.renderer.toneMappingExposure = this.exposure;
     (this.stars.material as THREE.PointsMaterial).opacity = (1 - day) * (1 - over);
